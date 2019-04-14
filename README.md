@@ -1,0 +1,2 @@
+# stage
+The stage framework
