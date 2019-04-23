@@ -1,6 +1,7 @@
 package io.aboutcode.stage.web.web.request;
 
 import io.aboutcode.stage.web.web.Session;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -37,6 +38,22 @@ public interface Request {
     * @return Optionally, the value for the requested path parameter
     */
    Optional<String> pathParam(String name);
+
+   /**
+    * Returns the values for the query parameter for the specified name.
+    *
+    * @param name The name of the parameter
+    *
+    * @return All values set in the request for specified query parameter
+    */
+   List<String> queryParam(String name);
+
+   /**
+    * Returns all specified quwery parameter names.
+    *
+    * @return A list of all specified query parameters for this request
+    */
+   Set<String> queryParams();
 
    /**
     * Returns the raw body of the request.
