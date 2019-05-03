@@ -307,12 +307,21 @@ final class SparkServer {
       }
 
       @Override
-      public List<String> queryParam(String name) {
+      public List<String> queryParams(String name) {
          return Optional
              .ofNullable(rawRequest.queryParamsValues(name))
              .map(Stream::of)
              .orElse(Stream.empty())
              .collect(Collectors.toList());
+      }
+
+      @Override
+      public Optional<String> queryParam(String name) {
+         return Optional
+                 .ofNullable(rawRequest.queryParamsValues(name))
+                 .map(Stream::of)
+                 .orElse(Stream.empty())
+                 .findFirst();
       }
 
       @Override
