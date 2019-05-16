@@ -35,6 +35,15 @@ public final class JooqPersistence extends BaseComponent implements Persistence<
     }
 
     /**
+     * Creates a new instance with the target dialect Jooq should use.
+     *
+     * @param targetDialect The dialect Jooq should use to create SQL statements
+     */
+    public JooqPersistence(SQLDialect targetDialect) {
+        this(null, targetDialect);
+    }
+
+    /**
      * Creates a new instance with the default dialect.
      *
      * @param persistenceIdentifier The identifier for the internal {@link JDBCPersistence} that should be used
@@ -75,6 +84,10 @@ public final class JooqPersistence extends BaseComponent implements Persistence<
 
     @Override
     public void resolve(DependencyContext context) throws DependencyException {
-        jdbcPersistence = context.retrieveDependency(persistenceIdentifier, JDBCPersistence.class, true);
+        if (persistenceIdentifier == null) {
+            jdbcPersistence = context.retrieveDependency(JDBCPersistence.class);
+        } else {
+            jdbcPersistence = context.retrieveDependency(persistenceIdentifier, JDBCPersistence.class, true);
+        }
     }
 }
