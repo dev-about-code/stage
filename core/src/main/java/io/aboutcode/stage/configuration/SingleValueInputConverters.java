@@ -21,6 +21,8 @@ import java.util.Optional;
  * <li>char</li>
  * <li>Short</li>
  * <li>short</li>
+ * <li>Boolean</li>
+ * <li>boolean</li>
  * <li>String</li>
  * <li>Object</li>
  * </ul>
@@ -44,6 +46,8 @@ final class SingleValueInputConverters {
            .with(char.class, input -> input.charAt(0))
            .with(Short.class, Short::parseShort)
            .with(short.class, Short::parseShort)
+           .with(Boolean.class, Boolean::parseBoolean)
+           .with(boolean.class, Boolean::parseBoolean)
            .with(String.class, input -> input)
            .with(Object.class, input -> input)
        // todo: date types
