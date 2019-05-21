@@ -158,13 +158,14 @@ final class SparkServer {
                         io.aboutcode.stage.web.web.response.Response response,
                         boolean canFinish) {
       HttpServletResponse servletResponse = rawResponse.raw();
-      // add headers to spark response
-      response
-          .headers()
-          .forEach(servletResponse::setHeader);
 
       // produce body
       String body = responseRenderer.render(request, response);
+      
+      // add headers to spark response
+      response
+              .headers()
+              .forEach(servletResponse::setHeader);
 
       // do we need to halt?
       if (canFinish && response.finished()) {
