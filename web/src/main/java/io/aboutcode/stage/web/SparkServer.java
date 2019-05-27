@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,7 +98,8 @@ final class SparkServer {
       io.aboutcode.stage.web.web.response.Response response;
       try {
          response = requestHandler.process(request, currentResponse);
-      } catch (Exception e) {
+      }
+      catch (Exception e) {
          LOGGER.error("Processing request caused error: {}", e.getMessage(), e);
          response = InternalServerError.with(String.format("Processing request caused error: %s",
                                                            e.getMessage()));
@@ -119,7 +121,8 @@ final class SparkServer {
                             new FilterImpl(route.getPath(), "*/*") {
                                @Override
                                public void handle(Request rawRequest, Response rawResponse) {
-                                  io.aboutcode.stage.web.web.request.Request request = request(rawRequest);
+                                  io.aboutcode.stage.web.web.request.Request request = request(
+                                      rawRequest);
                                   io.aboutcode.stage.web.web.response.Response response =
                                       process(request,
                                               route.getRequestHandler());
@@ -135,7 +138,8 @@ final class SparkServer {
                            new RouteImpl(route.getPath(), "*/*") {
                               @Override
                               public Object handle(Request rawRequest, Response rawResponse) {
-                                 io.aboutcode.stage.web.web.request.Request request = request(rawRequest);
+                                 io.aboutcode.stage.web.web.request.Request request = request(
+                                     rawRequest);
 
                                  // has the request been finished before? Then we do not process it
                                  io.aboutcode.stage.web.web.response.Response response = getCurrentResponse(
@@ -154,13 +158,14 @@ final class SparkServer {
                         io.aboutcode.stage.web.web.response.Response response,
                         boolean canFinish) {
       HttpServletResponse servletResponse = rawResponse.raw();
-      // add headers to spark response
-      response
-          .headers()
-          .forEach(servletResponse::setHeader);
 
       // produce body
       String body = responseRenderer.render(request, response);
+      
+      // add headers to spark response
+      response
+              .headers()
+              .forEach(servletResponse::setHeader);
 
       // do we need to halt?
       if (canFinish && response.finished()) {
@@ -207,7 +212,8 @@ final class SparkServer {
       if (staticFilesFolder != null) {
          if (isStaticFolderExternal) {
             sparkService.externalStaticFileLocation(staticFilesFolder);
-         } else {
+         }
+         else {
             sparkService.staticFileLocation(staticFilesFolder);
          }
       }
@@ -299,6 +305,29 @@ final class SparkServer {
       @Override
       public Optional<String> pathParam(String name) {
          return Optional.ofNullable(rawRequest.params(name));
+      }
+
+      @Override
+      public List<String> queryParams(String name) {
+         return Optional
+             .ofNullable(rawRequest.queryParamsValues(name))
+             .map(Stream::of)
+             .orElse(Stream.empty())
+             .collect(Collectors.toList());
+      }
+
+      @Override
+      public Optional<String> queryParam(String name) {
+         return Optional
+                 .ofNullable(rawRequest.queryParamsValues(name))
+                 .map(Stream::of)
+                 .orElse(Stream.empty())
+                 .findFirst();
+      }
+
+      @Override
+      public Set<String> queryParams() {
+         return rawRequest.queryParams();
       }
 
       @Override

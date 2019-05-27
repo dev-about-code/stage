@@ -11,7 +11,7 @@ import io.aboutcode.stage.web.web.response.Response;
  * Default renderer for JSON responses.
  */
 public class JsonResponseRenderer implements ResponseRenderer {
-   private final Gson PARSER = new GsonBuilder().create();
+   private final Gson parser = new GsonBuilder().create();
    private final MediaType responseType;
 
    private JsonResponseRenderer(MediaType responseType) {
@@ -39,6 +39,6 @@ public class JsonResponseRenderer implements ResponseRenderer {
    @Override
    public String render(Request request, Response response) {
       HttpHeader.CONTENT_TYPE.set(response, responseType.toString());
-      return response.data() == null ? null : PARSER.toJson(response.data());
+      return response.data() == null ? null : parser.toJson(response.data());
    }
 }
