@@ -1,22 +1,22 @@
 package io.aboutcode.stage.web.web.request;
 
 import io.aboutcode.stage.web.web.Session;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 /**
- * This represents a HTTP request from a client to the web server. The request will be passed on from each {@link
- * RequestHandler} to the next. Hence, state will be promoted through the chain and can be re-used in subsequent
- * handlers.
+ * This represents a HTTP request from a client to the web server. The request will be passed on
+ * from each {@link RequestHandler} to the next. Hence, state will be promoted through the chain and
+ * can be re-used in subsequent handlers.
  */
 public interface Request {
     /**
-     * Returns an attribute of the request that has been added to it previously, most likely by a previous {@link
-     * RequestHandler}.
+     * Returns an attribute of the request that has been added to it previously, most likely by a
+     * previous {@link RequestHandler}.
      *
      * @param name The name of the attribute to retrieve
+     *
      * @return Optionally, the retrieved attribute
      */
     Optional<Object> attribute(String name);
@@ -30,10 +30,11 @@ public interface Request {
     void attribute(String name, Object value);
 
     /**
-     * Returns the parameter from the path of the specified name. Path parameters can be specified by adding a colon to
-     * one of the path segments. E.g. <code>/api/user/:id/zip</code>.
+     * Returns the parameter from the path of the specified name. Path parameters can be specified
+     * by adding a colon to one of the path segments. E.g. <code>/api/user/:id/zip</code>.
      *
      * @param name The name of the parameter <em>without leading colon</em>.
+     *
      * @return Optionally, the value for the requested path parameter
      */
     Optional<String> pathParam(String name);
@@ -42,15 +43,17 @@ public interface Request {
      * Returns the values for the query parameter for the specified name.
      *
      * @param name The name of the parameter
+     *
      * @return All values set in the request for specified query parameter
      */
     List<String> queryParams(String name);
 
     /**
-     * Returns the first value for the query parameter for the specified name. All other values will be ignored, if
-     * any.
+     * Returns the first value for the query parameter for the specified name. All other values will
+     * be ignored, if any.
      *
      * @param name The name of the parameter
+     *
      * @return Optionally, the first value set in the request for specified query parameter
      */
     Optional<String> queryParam(String name);
@@ -73,6 +76,7 @@ public interface Request {
      * Returns the value of the request header with the specified name.
      *
      * @param name The name of the header value to retrieve
+     *
      * @return Optionally, the value of the header
      */
     Optional<String> header(String name);
@@ -80,7 +84,8 @@ public interface Request {
     /**
      * Returns the names of all headers that are specified for this request.
      *
-     * @return The names of all headers that are available for this request or an empty {@link Set}. Never null.
+     * @return The names of all headers that are available for this request or an empty {@link Set}.
+     * Never null.
      */
     Set<String> headers();
 
@@ -92,8 +97,9 @@ public interface Request {
     RequestType method();
 
     /**
-     * Returns the current session for this requests and creates one if none exists. Sessions may persist longer than a
-     * request. Hence, values stored in a session are availabel to subsequent requests, too.
+     * Returns the current session for this requests and creates one if none exists. Sessions may
+     * persist longer than a request. Hence, values stored in a session are availabel to subsequent
+     * requests, too.
      *
      * @return The session associated with this request
      */

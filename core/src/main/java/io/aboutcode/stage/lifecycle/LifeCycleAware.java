@@ -10,36 +10,42 @@ package io.aboutcode.stage.lifecycle;
  * @param <ContextT> the type of context passed to the code at initialization time
  */
 public interface LifeCycleAware<ContextT> {
-   /**
-    * The implementing code should use this method to allocate resources and generally prepare the
-    * component for startup. This includes - for example - connecting to external dependencies,
-    * creating files, etc.
-    */
-   default void init(ContextT context) throws LifeCycleException {
+    /**
+     * The implementing code should use this method to allocate resources and generally prepare the
+     * component for startup. This includes - for example - connecting to external dependencies,
+     * creating files, etc.
+     *
+     * @param context The context to use to interact with the framework
+     *
+     * @throws LifeCycleException Thrown if the initialisation fails for some reason
+     */
+    default void init(ContextT context) throws LifeCycleException {
 
-   }
+    }
 
-   /**
-    * Any actual work, including starting threads and processing data, should be performed in this
-    * method.
-    */
-   default void start() throws LifeCycleException {
+    /**
+     * Any actual work, including starting threads and processing data, should be performed in this
+     * method.
+     *
+     * @throws LifeCycleException Thrown if starting the component fails for some reason
+     */
+    default void start() throws LifeCycleException {
 
-   }
+    }
 
-   /**
-    * Any decomposition of the component - like persisting a final state in a database, for example
-    * - should be performed in this method.
-    */
-   default void stop() {
+    /**
+     * Any decomposition of the component - like persisting a final state in a database, for example
+     * - should be performed in this method.
+     */
+    default void stop() {
 
-   }
+    }
 
-   /**
-    * Any cleanup and releasing of resources must be performed in this method. After this method
-    * returns, the unit will be discarded.
-    */
-   default void destroy() {
+    /**
+     * Any cleanup and releasing of resources must be performed in this method. After this method
+     * returns, the unit will be discarded.
+     */
+    default void destroy() {
 
-   }
+    }
 }

@@ -10,9 +10,9 @@ import io.aboutcode.stage.web.web.response.Response;
  * <code>text/plain</code>
  */
 public final class RawResponseRenderer implements ResponseRenderer {
-   @Override
-   public String render(Request request, Response response) {
-      HttpHeader.CONTENT_TYPE.set(response, MediaType.PLAIN_TEXT_UTF_8.toString());
-      return response.data() == null ? null : response.data().toString();
-   }
+    @Override
+    public String render(Request request, Response response) {
+        HttpHeader.CONTENT_TYPE.set(response, MediaType.PLAIN_TEXT_UTF_8.toString());
+        return response.data() == null ? null : response.data().toString();
+    }
 }

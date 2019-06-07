@@ -9,21 +9,22 @@ import java.util.List;
  * request-response Http communication.
  */
 public interface WebEndpoint {
-   /**
-    * Returns the routes that this endpoint exposes, defaults to an empty list.
-    *
-    * @return The routes that this endpoint exposes.
-    */
-   default List<Route> getRoutes() {
-      return Collections.emptyList();
-   }
+    /**
+     * Returns the routes that this endpoint exposes, defaults to an empty list.
+     *
+     * @return The routes that this endpoint exposes.
+     */
+    default List<Route> getRoutes() {
+        return Collections.emptyList();
+    }
 
-   /**
-    * Returns the websocket routes that this endpoint wants to register, defaults to an empty list.
-    *
-    * @return The websocket routes that this endpoint wants to register.
-    */
-   default List<WebSocketRoute> getWebSocketRoutes() {
-      return Collections.emptyList();
-   }
+    /**
+     * Returns the websocket routes that this endpoint wants to register, defaults to an empty
+     * list.
+     *
+     * @return The websocket routes that this endpoint wants to register.
+     */
+    default List<WebSocketRoute> getWebSocketRoutes() {
+        return Collections.emptyList();
+    }
 }

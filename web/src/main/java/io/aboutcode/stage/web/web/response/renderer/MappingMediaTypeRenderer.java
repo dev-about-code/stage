@@ -13,42 +13,42 @@ import java.util.stream.Stream;
  * renderer. If none is found, the default response renderer is used to return a result.
  */
 public final class MappingMediaTypeRenderer implements ResponseRenderer {
-   private static final String ACCEPT_TYPE_HEADER = "Accept";
-   private final ResponseRenderer defaultRenderer;
-   private final Map<MediaType, ResponseRenderer> mediaTypeToResponseHandler = new HashMap<>();
+    private static final String ACCEPT_TYPE_HEADER = "Accept";
+    private final ResponseRenderer defaultRenderer;
+    private final Map<MediaType, ResponseRenderer> mediaTypeToResponseHandler = new HashMap<>();
 
-   public MappingMediaTypeRenderer(ResponseRenderer defaultRenderer) {
-      this.defaultRenderer = defaultRenderer;
-   }
+    public MappingMediaTypeRenderer(ResponseRenderer defaultRenderer) {
+        this.defaultRenderer = defaultRenderer;
+    }
 
-   /**
-    * Adds a mapping for the specified response renderer to the specified media types.
-    *
-    * @param renderer The renderer to map
-    * @param types    The types to map the renderer to
-    *
-    * @return This for fluent interface
-    */
-   public MappingMediaTypeRenderer map(ResponseRenderer renderer, MediaType... types) {
-      Stream
-          .of(types)
-          .forEach(type -> mediaTypeToResponseHandler.put(type, renderer));
-      return this;
-   }
+    /**
+     * Adds a mapping for the specified response renderer to the specified media types.
+     *
+     * @param renderer The renderer to map
+     * @param types    The types to map the renderer to
+     *
+     * @return This for fluent interface
+     */
+    public MappingMediaTypeRenderer map(ResponseRenderer renderer, MediaType... types) {
+        Stream
+                .of(types)
+                .forEach(type -> mediaTypeToResponseHandler.put(type, renderer));
+        return this;
+    }
 
-   @Override
-   public String render(Request request, Response response) {
-      return request
-          .header(ACCEPT_TYPE_HEADER)
-          .flatMap(type -> {
-             try {
-                return Optional.ofNullable(MediaType.parse(type));
-             } catch (Exception e) {
-                return Optional.empty();
-             }
-          })
-          .flatMap(type -> Optional.ofNullable(mediaTypeToResponseHandler.get(type)))
-          .orElse(defaultRenderer)
-          .render(request, response);
-   }
+    @Override
+    public String render(Request request, Response response) {
+        return request
+                .header(ACCEPT_TYPE_HEADER)
+                .flatMap(type -> {
+                    try {
+                        return Optional.ofNullable(MediaType.parse(type));
+                    } catch (Exception e) {
+                        return Optional.empty();
+                    }
+                })
+                .flatMap(type -> Optional.ofNullable(mediaTypeToResponseHandler.get(type)))
+                .orElse(defaultRenderer)
+                .render(request, response);
+    }
 }

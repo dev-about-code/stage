@@ -7,17 +7,21 @@ import io.aboutcode.stage.configuration.ApplicationConfigurationContext;
  * {@link ApplicationContainer}
  */
 public interface Application {
-   /**
-    * Configure the application by adding command line parameters and component bundle.
-    */
-   default void configure(ApplicationConfigurationContext context) {
+    /**
+     * Configure the application by adding command line parameters and component bundle.
+     *
+     * @param context The context to use for configuring the application
+     */
+    default void configure(ApplicationConfigurationContext context) {
 
-   }
+    }
 
-   /**
-    * Assemble the application by adding components
-    */
-   default void assemble(ApplicationAssemblyContext context) {
+    /**
+     * Assemble the application by adding components
+     *
+     * @param context The context to use for assembling the application
+     */
+    default void assemble(ApplicationAssemblyContext context) {
 
-   }
+    }
 }

@@ -5,12 +5,12 @@ package io.aboutcode.stage.dependency;
  * dependencies.
  */
 public class DependencyException extends Exception {
-   /**
-    * Creates a new exception
-    *
-    * @param message The description of the exception
-    */
-   public DependencyException(String message) {
-      super(message);
-   }
+    /**
+     * Creates a new exception
+     *
+     * @param message The description of the exception
+     */
+    public DependencyException(String message) {
+        super(message);
+    }
 }

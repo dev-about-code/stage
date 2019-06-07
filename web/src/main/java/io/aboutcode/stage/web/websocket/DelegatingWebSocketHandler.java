@@ -14,33 +14,33 @@ import org.eclipse.jetty.websocket.api.annotations.WebSocket;
  */
 @WebSocket
 public final class DelegatingWebSocketHandler implements WebSocketHandler {
-   private WebSocketHandler delegate;
+    private WebSocketHandler delegate;
 
-   public DelegatingWebSocketHandler(WebSocketHandler delegate) {
-      this.delegate = delegate;
-   }
+    public DelegatingWebSocketHandler(WebSocketHandler delegate) {
+        this.delegate = delegate;
+    }
 
-   @OnWebSocketMessage
-   @Override
-   public void onMessage(Session session, String message) {
-      delegate.onMessage(session, message);
-   }
+    @OnWebSocketMessage
+    @Override
+    public void onMessage(Session session, String message) {
+        delegate.onMessage(session, message);
+    }
 
-   @OnWebSocketConnect
-   @Override
-   public void onConnect(Session session) {
-      delegate.onConnect(session);
-   }
+    @OnWebSocketConnect
+    @Override
+    public void onConnect(Session session) {
+        delegate.onConnect(session);
+    }
 
-   @OnWebSocketClose
-   @Override
-   public void onDisconnect(Session session, int status, String reason) {
-      delegate.onDisconnect(session, status, reason);
-   }
+    @OnWebSocketClose
+    @Override
+    public void onDisconnect(Session session, int status, String reason) {
+        delegate.onDisconnect(session, status, reason);
+    }
 
-   @OnWebSocketError
-   @Override
-   public void onError(Session session, Throwable error) {
-      delegate.onError(session, error);
-   }
+    @OnWebSocketError
+    @Override
+    public void onError(Session session, Throwable error) {
+        delegate.onError(session, error);
+    }
 }
