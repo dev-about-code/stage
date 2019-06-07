@@ -17,66 +17,66 @@ import java.util.Set;
  * any routes.</p>
  */
 final class WebServerComponent extends BaseComponent {
-   private final int port;
-   private final String staticFilesFolder;
-   private final boolean isStaticFolderExternal;
-   private final Set<Class> validEndpoints;
-   private ResponseRenderer responseRenderer;
-   private TslConfiguration tslConfiguration;
-   private Set<WebEndpoint> webEndpoints;
+    private final int port;
+    private final String staticFilesFolder;
+    private final boolean isStaticFolderExternal;
+    private final Set<Class> validEndpoints;
+    private ResponseRenderer responseRenderer;
+    private TslConfiguration tslConfiguration;
+    private Set<WebEndpoint> webEndpoints;
 
-   private SparkServer sparkServer;
+    private SparkServer sparkServer;
 
-   /**
-    * Creates a new component.
-    *
-    * @param port                   The port on which to listen for connections.
-    * @param staticFilesFolder      The folder to expose static files from
-    * @param isStaticFolderExternal If true, the static files are reloaded live
-    * @param tslConfiguration       The (optional) ssl configuration to use
-    * @param validEndpoints         If not null, the endpoints this server should use. All other
-    * @param responseRenderer       The renderer for all responses
-    */
-   WebServerComponent(int port,
-                      String staticFilesFolder, boolean isStaticFolderExternal,
-                      TslConfiguration tslConfiguration,
-                      Set<Class> validEndpoints,
-                      ResponseRenderer responseRenderer) {
-      this.port = port;
-      this.staticFilesFolder = staticFilesFolder;
-      this.isStaticFolderExternal = isStaticFolderExternal;
-      this.tslConfiguration = tslConfiguration;
-      this.validEndpoints = validEndpoints;
-      this.responseRenderer = responseRenderer;
-   }
+    /**
+     * Creates a new component.
+     *
+     * @param port                   The port on which to listen for connections.
+     * @param staticFilesFolder      The folder to expose static files from
+     * @param isStaticFolderExternal If true, the static files are reloaded live
+     * @param tslConfiguration       The (optional) ssl configuration to use
+     * @param validEndpoints         If not null, the endpoints this server should use. All other
+     * @param responseRenderer       The renderer for all responses
+     */
+    WebServerComponent(int port,
+                       String staticFilesFolder, boolean isStaticFolderExternal,
+                       TslConfiguration tslConfiguration,
+                       Set<Class> validEndpoints,
+                       ResponseRenderer responseRenderer) {
+        this.port = port;
+        this.staticFilesFolder = staticFilesFolder;
+        this.isStaticFolderExternal = isStaticFolderExternal;
+        this.tslConfiguration = tslConfiguration;
+        this.validEndpoints = validEndpoints;
+        this.responseRenderer = responseRenderer;
+    }
 
-   @Override
-   public final void start() throws LifeCycleException {
-      // create the basic service and initialize it
-      sparkServer = new SparkServer(port,
-                                    tslConfiguration,
-                                    staticFilesFolder,
-                                    isStaticFolderExternal,
-                                    webEndpoints,
-                                    responseRenderer);
-      sparkServer.start();
-   }
+    @Override
+    public final void start() throws LifeCycleException {
+        // create the basic service and initialize it
+        sparkServer = new SparkServer(port,
+                                      tslConfiguration,
+                                      staticFilesFolder,
+                                      isStaticFolderExternal,
+                                      webEndpoints,
+                                      responseRenderer);
+        sparkServer.start();
+    }
 
-   @Override
-   public final void stop() {
-      sparkServer.stop();
-   }
+    @Override
+    public final void stop() {
+        sparkServer.stop();
+    }
 
-   @Override
-   public void resolve(DependencyContext context) throws DependencyException {
-      if (validEndpoints == null) {
-         webEndpoints = context.retrieveDependencies(WebEndpoint.class);
-      } else {
-         webEndpoints = new HashSet<>();
-         for (Class validType : validEndpoints) {
-            //noinspection unchecked
-            webEndpoints.addAll(context.retrieveDependencies(validType));
-         }
-      }
-   }
+    @Override
+    public void resolve(DependencyContext context) throws DependencyException {
+        if (validEndpoints == null) {
+            webEndpoints = context.retrieveDependencies(WebEndpoint.class);
+        } else {
+            webEndpoints = new HashSet<>();
+            for (Class validType : validEndpoints) {
+                //noinspection unchecked
+                webEndpoints.addAll(context.retrieveDependencies(validType));
+            }
+        }
+    }
 }

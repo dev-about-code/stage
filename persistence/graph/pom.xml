@@ -1,22 +1,23 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns="http://maven.apache.org/POM/4.0.0"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>io.aboutcode.stage.persistence</groupId>
-        <artifactId>persistence</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
-    </parent>
+  <parent>
+    <groupId>io.aboutcode.stage.persistence</groupId>
+    <artifactId>persistence</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+  </parent>
 
-    <groupId>io.aboutcode.stage.persistence.graph</groupId>
-    <artifactId>graph</artifactId>
+  <groupId>io.aboutcode.stage.persistence.graph</groupId>
+  <artifactId>graph</artifactId>
 
-    <packaging>pom</packaging>
-    
-    <modules>
-        <module>neo4j</module>
-    </modules>
-    
-    <name>Stage graph persistence</name>
-    <description>Graph persistence related classes</description>
+  <packaging>pom</packaging>
+
+  <modules>
+    <module>neo4j</module>
+  </modules>
+
+  <name>Stage graph persistence</name>
+  <description>Graph persistence related classes</description>
 </project>

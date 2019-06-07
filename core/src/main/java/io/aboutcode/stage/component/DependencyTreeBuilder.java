@@ -3,8 +3,15 @@ package io.aboutcode.stage.component;
 import io.aboutcode.stage.dependency.DependencyAware;
 import io.aboutcode.stage.dependency.DependencyContext;
 import io.aboutcode.stage.dependency.DependencyException;
-
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -15,11 +22,14 @@ class DependencyTreeBuilder {
      * Creates the tree of dependencies using the elements specified at construction.
      *
      * @param elements The elements to compile a dependencie tree from
+     *
      * @return A list of identifiers in the order in which they should be initialized
-     * @throws DependencyException Thrown if a circular dependency is detected or if a required dependency could not be
-     *                             found
+     *
+     * @throws DependencyException Thrown if a circular dependency is detected or if a required
+     *                             dependency could not be found
      */
-    static List<Object> buildTree(Map<Object, DependencyAware> elements) throws DependencyException {
+    static List<Object> buildTree(Map<Object, DependencyAware> elements)
+            throws DependencyException {
         final LinkedHashSet<Object> processedElements = new LinkedHashSet<>();
         for (Object identifier : elements.keySet()) {
             process(identifier, elements, new ArrayDeque<>(), processedElements);
@@ -30,7 +40,8 @@ class DependencyTreeBuilder {
     private static void process(Object identifier,
                                 Map<Object, DependencyAware> allElements,
                                 Deque<Object> currentElementStack,
-                                LinkedHashSet<Object> processedElements) throws DependencyException {
+                                LinkedHashSet<Object> processedElements)
+            throws DependencyException {
         if (!processedElements.contains(identifier)) {
             if (currentElementStack.contains(identifier)) {
                 throw new DependencyException(String.format(
@@ -59,14 +70,17 @@ class DependencyTreeBuilder {
                     if (allDependencies.isEmpty()) {
                         if (required) {
                             throw new DependencyException(
-                                    String.format("Missing dependency of type '%s' for component '%s'", type
-                                            .getName(), identifier));
+                                    String.format(
+                                            "Missing dependency of type '%s' for component '%s'",
+                                            type
+                                                    .getName(), identifier));
                         }
                         // we don't have the dependency, but we don't care
                         return null;
                     } else if (allDependencies.size() > 1) {
                         throw new DependencyException(String.format(
-                                "Multiple matching dependencies of type '%s' found for component '%s'", type
+                                "Multiple matching dependencies of type '%s' found for component '%s'",
+                                type
                                         .getName(), identifier));
                     }
 
@@ -81,7 +95,8 @@ class DependencyTreeBuilder {
                         }
                     }
                     assert componentIdentifier != null;
-                    process(componentIdentifier, allElements, currentElementStack, processedElements);
+                    process(componentIdentifier, allElements, currentElementStack,
+                            processedElements);
                     return dependency;
                 }
 
@@ -121,14 +136,16 @@ class DependencyTreeBuilder {
                     for (DependencyT dependency : allDependencies) {
                         Object componentIdentifier = null;
                         synchronized (allElements) {
-                            for (Map.Entry<Object, DependencyAware> entry : allElements.entrySet()) {
+                            for (Map.Entry<Object, DependencyAware> entry : allElements
+                                    .entrySet()) {
                                 if (entry.getValue().equals(dependency)) {
                                     componentIdentifier = entry.getKey();
                                 }
                             }
                         }
                         assert componentIdentifier != null;
-                        process(componentIdentifier, allElements, currentElementStack, processedElements);
+                        process(componentIdentifier, allElements, currentElementStack,
+                                processedElements);
                     }
                     return allDependencies;
                 }
@@ -141,7 +158,8 @@ class DependencyTreeBuilder {
                         elements = new ArrayList<>(allElements.values());
                     }
                     return elements.stream()
-                                   .filter(dependency -> clazz.isAssignableFrom(dependency.getClass()))
+                                   .filter(dependency -> clazz
+                                           .isAssignableFrom(dependency.getClass()))
                                    .map(dependency -> (DependencyT) dependency)
                                    .collect(Collectors.toList());
                 }

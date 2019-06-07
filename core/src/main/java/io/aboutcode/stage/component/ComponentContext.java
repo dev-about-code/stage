@@ -7,19 +7,22 @@ import io.aboutcode.stage.lifecycle.LifeCycleStatus;
  * functionality and services provided by the {@link ComponentContainer}.
  */
 public interface ComponentContext {
-   /**
-    * @return the current status of this component in the {@link ComponentContainer}'s lifecycle
-    */
-   LifeCycleStatus getStatus();
+    /**
+     * @return the current status of this component in the {@link ComponentContainer}'s lifecycle
+     */
+    LifeCycleStatus getStatus();
 
-   /**
-    * @return the identifier assigned to this component
-    */
-   Object getIdentifier();
+    /**
+     * @return the identifier assigned to this component
+     */
+    Object getIdentifier();
 
-   /**
-    * Request the termination of the corresponding component container. When and whether the
-    * termination takes place is at the discretion of the container.
-    */
-   void requestTermination(String reason, Exception cause);
+    /**
+     * Request the termination of the corresponding component container. When and whether the
+     * termination takes place is at the discretion of the container.
+     *
+     * @param reason The reason for termination
+     * @param cause  Optionally, the exception that caused the termination
+     */
+    void requestTermination(String reason, Exception cause);
 }

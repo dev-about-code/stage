@@ -30,34 +30,34 @@ import java.util.Optional;
  * <p><em>Note</em> that <code>Object</code> types will simply use the input string as-is.</p>
  */
 final class SingleValueInputConverters {
-   private static final Dispatcher<Class, InputConverter<?>> CLASS_TO_CONVERTER =
-       Dispatcher
-           .<Class, InputConverter<?>>of(Integer.class, Integer::parseInt)
-           .with(int.class, Integer::parseInt)
-           .with(Long.class, Long::parseLong)
-           .with(long.class, Long::parseLong)
-           .with(Double.class, Double::parseDouble)
-           .with(double.class, Double::parseDouble)
-           .with(Float.class, Float::parseFloat)
-           .with(float.class, Float::parseFloat)
-           .with(Byte.class, Byte::parseByte)
-           .with(byte.class, Byte::parseByte)
-           .with(Character.class, input -> input.charAt(0))
-           .with(char.class, input -> input.charAt(0))
-           .with(Short.class, Short::parseShort)
-           .with(short.class, Short::parseShort)
-           .with(Boolean.class, Boolean::parseBoolean)
-           .with(boolean.class, Boolean::parseBoolean)
-           .with(String.class, input -> input)
-           .with(Object.class, input -> input)
-       // todo: date types
-       ;
+    private static final Dispatcher<Class, InputConverter<?>> CLASS_TO_CONVERTER =
+            Dispatcher
+                    .<Class, InputConverter<?>>of(Integer.class, Integer::parseInt)
+                    .with(int.class, Integer::parseInt)
+                    .with(Long.class, Long::parseLong)
+                    .with(long.class, Long::parseLong)
+                    .with(Double.class, Double::parseDouble)
+                    .with(double.class, Double::parseDouble)
+                    .with(Float.class, Float::parseFloat)
+                    .with(float.class, Float::parseFloat)
+                    .with(Byte.class, Byte::parseByte)
+                    .with(byte.class, Byte::parseByte)
+                    .with(Character.class, input -> input.charAt(0))
+                    .with(char.class, input -> input.charAt(0))
+                    .with(Short.class, Short::parseShort)
+                    .with(short.class, Short::parseShort)
+                    .with(Boolean.class, Boolean::parseBoolean)
+                    .with(boolean.class, Boolean::parseBoolean)
+                    .with(String.class, input -> input)
+                    .with(Object.class, input -> input)
+            // todo: date types
+            ;
 
-   private SingleValueInputConverters() {
-   }
+    private SingleValueInputConverters() {
+    }
 
-   static <OutputT> Optional<InputConverter<OutputT>> getConverter(Class<OutputT> type) {
-      //noinspection unchecked
-      return CLASS_TO_CONVERTER.dispatch(type).map(result -> (InputConverter<OutputT>) result);
-   }
+    static <OutputT> Optional<InputConverter<OutputT>> getConverter(Class<OutputT> type) {
+        //noinspection unchecked
+        return CLASS_TO_CONVERTER.dispatch(type).map(result -> (InputConverter<OutputT>) result);
+    }
 }

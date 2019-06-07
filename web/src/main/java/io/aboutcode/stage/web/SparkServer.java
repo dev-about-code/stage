@@ -35,358 +35,360 @@ import spark.route.HttpMethod;
  */
 final class SparkServer {
 
-   private static final Logger LOGGER = LoggerFactory.getLogger(SparkServer.class);
-   private static final String KEY_RESPONSE = "-RESPONSE-";
-   private final int port;
-   private final TslConfiguration tslConfiguration;
-   private final String staticFilesFolder;
-   private final boolean isStaticFolderExternal;
-   private final Set<WebEndpoint> webEndpoints;
-   private final ResponseRenderer responseRenderer;
-   private final Dispatcher<RequestType, ServiceRequestProcessor> SERVICE_PROCESSORS =
-       Dispatcher
-           .of(RequestType.AFTER_ALL, filter(HttpMethod.after))
-           .with(RequestType.BEFORE_ALL, filter(HttpMethod.before))
-           .with(RequestType.GET, route(HttpMethod.get))
-           .with(RequestType.POST, route(HttpMethod.post))
-           .with(RequestType.PUT, route(HttpMethod.put))
-           .with(RequestType.DELETE, route(HttpMethod.delete))
-           .with(RequestType.OPTIONS, route(HttpMethod.options))
-           .with(RequestType.PATCH, route(HttpMethod.patch));
-   private Service sparkService;
+    private static final Logger LOGGER = LoggerFactory.getLogger(SparkServer.class);
+    private static final String KEY_RESPONSE = "-RESPONSE-";
+    private final int port;
+    private final TslConfiguration tslConfiguration;
+    private final String staticFilesFolder;
+    private final boolean isStaticFolderExternal;
+    private final Set<WebEndpoint> webEndpoints;
+    private final ResponseRenderer responseRenderer;
+    private final Dispatcher<RequestType, ServiceRequestProcessor> SERVICE_PROCESSORS =
+            Dispatcher
+                    .of(RequestType.AFTER_ALL, filter(HttpMethod.after))
+                    .with(RequestType.BEFORE_ALL, filter(HttpMethod.before))
+                    .with(RequestType.GET, route(HttpMethod.get))
+                    .with(RequestType.POST, route(HttpMethod.post))
+                    .with(RequestType.PUT, route(HttpMethod.put))
+                    .with(RequestType.DELETE, route(HttpMethod.delete))
+                    .with(RequestType.OPTIONS, route(HttpMethod.options))
+                    .with(RequestType.PATCH, route(HttpMethod.patch));
+    private Service sparkService;
 
-   /**
-    * Creates a new component.
-    *
-    * @param port                   The port to run the server on
-    * @param tslConfiguration       The (optional) ssl configuration parameters.
-    * @param staticFilesFolder      The folder to serve static files from
-    * @param isStaticFolderExternal If true, the folder is considered external and reloaded live
-    * @param webEndpoints           The web endpoints this server should be processing
-    * @param responseRenderer       The renderer for all responses
-    */
-   SparkServer(int port,
-               TslConfiguration tslConfiguration,
-               String staticFilesFolder,
-               boolean isStaticFolderExternal,
-               Set<WebEndpoint> webEndpoints,
-               ResponseRenderer responseRenderer) {
-      this.port = port;
-      this.tslConfiguration = tslConfiguration;
-      this.staticFilesFolder = staticFilesFolder;
-      this.isStaticFolderExternal = isStaticFolderExternal;
-      this.webEndpoints = webEndpoints;
-      this.responseRenderer = responseRenderer;
-   }
+    /**
+     * Creates a new component.
+     *
+     * @param port                   The port to run the server on
+     * @param tslConfiguration       The (optional) ssl configuration parameters.
+     * @param staticFilesFolder      The folder to serve static files from
+     * @param isStaticFolderExternal If true, the folder is considered external and reloaded live
+     * @param webEndpoints           The web endpoints this server should be processing
+     * @param responseRenderer       The renderer for all responses
+     */
+    SparkServer(int port,
+                TslConfiguration tslConfiguration,
+                String staticFilesFolder,
+                boolean isStaticFolderExternal,
+                Set<WebEndpoint> webEndpoints,
+                ResponseRenderer responseRenderer) {
+        this.port = port;
+        this.tslConfiguration = tslConfiguration;
+        this.staticFilesFolder = staticFilesFolder;
+        this.isStaticFolderExternal = isStaticFolderExternal;
+        this.webEndpoints = webEndpoints;
+        this.responseRenderer = responseRenderer;
+    }
 
-   private static io.aboutcode.stage.web.web.request.Request request(Request rawRequest) {
-      return new DefaultRequest(rawRequest);
-   }
+    private static io.aboutcode.stage.web.web.request.Request request(Request rawRequest) {
+        return new DefaultRequest(rawRequest);
+    }
 
-   private static io.aboutcode.stage.web.web.response.Response getCurrentResponse(
-       io.aboutcode.stage.web.web.request.Request request) {
-      return (io.aboutcode.stage.web.web.response.Response) request
-          .attribute(KEY_RESPONSE)
-          .orElse(Ok.create());
-   }
+    private static io.aboutcode.stage.web.web.response.Response getCurrentResponse(
+            io.aboutcode.stage.web.web.request.Request request) {
+        return (io.aboutcode.stage.web.web.response.Response) request
+                .attribute(KEY_RESPONSE)
+                .orElse(Ok.create());
+    }
 
-   private static io.aboutcode.stage.web.web.response.Response process(
-       io.aboutcode.stage.web.web.request.Request request,
-       RequestHandler requestHandler) {
-      io.aboutcode.stage.web.web.response.Response currentResponse = getCurrentResponse(request);
+    private static io.aboutcode.stage.web.web.response.Response process(
+            io.aboutcode.stage.web.web.request.Request request,
+            RequestHandler requestHandler) {
+        io.aboutcode.stage.web.web.response.Response currentResponse = getCurrentResponse(request);
 
-      io.aboutcode.stage.web.web.response.Response response;
-      try {
-         response = requestHandler.process(request, currentResponse);
-      }
-      catch (Exception e) {
-         LOGGER.error("Processing request caused error: {}", e.getMessage(), e);
-         response = InternalServerError.with(String.format("Processing request caused error: %s",
-                                                           e.getMessage()));
-      }
+        io.aboutcode.stage.web.web.response.Response response;
+        try {
+            response = requestHandler.process(request, currentResponse);
+        } catch (Exception e) {
+            LOGGER.error("Processing request caused error: {}", e.getMessage(), e);
+            response = InternalServerError.with(String.format("Processing request caused error: %s",
+                                                              e.getMessage()));
+        }
 
-      // this header should be removed by default, let's do it here
-      response.header("Server", "");
+        // this header should be removed by default, let's do it here
+        response.header("Server", "");
 
-      return response;
-   }
+        return response;
+    }
 
-   private static String string(Route route) {
-      return String.format("%s:%s", route.getType(), route.getPath());
-   }
+    private static String string(Route route) {
+        return String.format("%s:%s", route.getType(), route.getPath());
+    }
 
-   private ServiceRequestProcessor filter(HttpMethod method) {
-      return (service, route) ->
-          service.addFilter(method,
-                            new FilterImpl(route.getPath(), "*/*") {
-                               @Override
-                               public void handle(Request rawRequest, Response rawResponse) {
-                                  io.aboutcode.stage.web.web.request.Request request = request(
-                                      rawRequest);
-                                  io.aboutcode.stage.web.web.response.Response response =
-                                      process(request,
-                                              route.getRequestHandler());
+    private ServiceRequestProcessor filter(HttpMethod method) {
+        return (service, route) ->
+                service.addFilter(method,
+                                  new FilterImpl(route.getPath(), "*/*") {
+                                      @Override
+                                      public void handle(Request rawRequest, Response rawResponse) {
+                                          io.aboutcode.stage.web.web.request.Request request = request(
+                                                  rawRequest);
+                                          io.aboutcode.stage.web.web.response.Response response =
+                                                  process(request,
+                                                          route.getRequestHandler());
 
-                                  apply(rawResponse, request, response, false);
-                               }
-                            });
-   }
+                                          apply(rawResponse, request, response, false);
+                                      }
+                                  });
+    }
 
-   private ServiceRequestProcessor route(HttpMethod method) {
-      return (service, route) ->
-          service.addRoute(method,
-                           new RouteImpl(route.getPath(), "*/*") {
-                              @Override
-                              public Object handle(Request rawRequest, Response rawResponse) {
-                                 io.aboutcode.stage.web.web.request.Request request = request(
-                                     rawRequest);
+    private ServiceRequestProcessor route(HttpMethod method) {
+        return (service, route) ->
+                service.addRoute(method,
+                                 new RouteImpl(route.getPath(), "*/*") {
+                                     @Override
+                                     public Object handle(Request rawRequest,
+                                                          Response rawResponse) {
+                                         io.aboutcode.stage.web.web.request.Request request = request(
+                                                 rawRequest);
 
-                                 // has the request been finished before? Then we do not process it
-                                 io.aboutcode.stage.web.web.response.Response response = getCurrentResponse(
-                                     request);
-                                 if (!response.finished()) {
-                                    // routes always finish a request
-                                    response = process(request, route.getRequestHandler());
-                                 }
-                                 return apply(rawResponse, request, response, true);
-                              }
-                           });
-   }
+                                         // has the request been finished before? Then we do not process it
+                                         io.aboutcode.stage.web.web.response.Response response = getCurrentResponse(
+                                                 request);
+                                         if (!response.finished()) {
+                                             // routes always finish a request
+                                             response = process(request, route.getRequestHandler());
+                                         }
+                                         return apply(rawResponse, request, response, true);
+                                     }
+                                 });
+    }
 
-   private String apply(Response rawResponse,
-                        io.aboutcode.stage.web.web.request.Request request,
-                        io.aboutcode.stage.web.web.response.Response response,
-                        boolean canFinish) {
-      HttpServletResponse servletResponse = rawResponse.raw();
+    private String apply(Response rawResponse,
+                         io.aboutcode.stage.web.web.request.Request request,
+                         io.aboutcode.stage.web.web.response.Response response,
+                         boolean canFinish) {
+        HttpServletResponse servletResponse = rawResponse.raw();
 
-      // produce body
-      String body = responseRenderer.render(request, response);
-      
-      // add headers to spark response
-      response
-              .headers()
-              .forEach(servletResponse::setHeader);
+        // produce body
+        String body = responseRenderer.render(request, response);
 
-      // do we need to halt?
-      if (canFinish && response.finished()) {
-         Spark.halt(response.status(), body);
-      }
+        // add headers to spark response
+        response
+                .headers()
+                .forEach(servletResponse::setHeader);
 
-      request.attribute(KEY_RESPONSE, response);
+        // do we need to halt?
+        if (canFinish && response.finished()) {
+            Spark.halt(response.status(), body);
+        }
 
-      // set status and return response
-      rawResponse.status(response.status());
-      return body;
-   }
+        request.attribute(KEY_RESPONSE, response);
 
-   private void assign(Service service, Route route) {
-      SERVICE_PROCESSORS
-          .dispatch(route.getType())
-          .orElseThrow(() ->
-                           new IllegalArgumentException(String.format("Type %s cannot be processed",
-                                                                      route.getType()
-                                                                           .name())))
-          .process(service, route);
-   }
+        // set status and return response
+        rawResponse.status(response.status());
+        return body;
+    }
 
-   final void start() {
-      this.sparkService = Service.ignite().port(port);
+    private void assign(Service service, Route route) {
+        SERVICE_PROCESSORS
+                .dispatch(route.getType())
+                .orElseThrow(() ->
+                                     new IllegalArgumentException(
+                                             String.format("Type %s cannot be processed",
+                                                           route.getType()
+                                                                .name())))
+                .process(service, route);
+    }
 
-      if (tslConfiguration != null) {
-         this.sparkService.secure(
-             tslConfiguration.getKeyStoreLocation(),
-             tslConfiguration.getKeyStorePassword(),
-             tslConfiguration.getTrustStoreLocation(),
-             tslConfiguration.getTrustStorePassword(),
-             tslConfiguration.isClientCertificateRequired()
-         );
-      }
+    final void start() {
+        this.sparkService = Service.ignite().port(port);
 
-      // set the default exception handler
-      sparkService.initExceptionHandler((e) ->
-                                            LOGGER.error("Error in webserver : " +
-                                                         e.getMessage(),
-                                                         e));
+        if (tslConfiguration != null) {
+            this.sparkService.secure(
+                    tslConfiguration.getKeyStoreLocation(),
+                    tslConfiguration.getKeyStorePassword(),
+                    tslConfiguration.getTrustStoreLocation(),
+                    tslConfiguration.getTrustStorePassword(),
+                    tslConfiguration.isClientCertificateRequired()
+            );
+        }
 
-      // process static resources
-      if (staticFilesFolder != null) {
-         if (isStaticFolderExternal) {
-            sparkService.externalStaticFileLocation(staticFilesFolder);
-         }
-         else {
-            sparkService.staticFileLocation(staticFilesFolder);
-         }
-      }
+        // set the default exception handler
+        sparkService.initExceptionHandler((e) ->
+                                                  LOGGER.error("Error in webserver : " +
+                                                               e.getMessage(),
+                                                               e));
 
-      //noinspection UnstableApiUsage
-      List<RouteInfo> sortedRoutes = webEndpoints
-          .stream()
-          .map(webEndpoint -> {
-             // todo: also parse this prioritized?
-             webEndpoint
-                 .getWebSocketRoutes()
-                 .forEach(route -> sparkService.webSocket(route.getPath(),
-                                                          new DelegatingWebSocketHandler(
-                                                              route.getWebSocketHandler())));
-
-             return webEndpoint
-                 .getRoutes()
-                 .stream()
-                 .map(route -> new RouteInfo(route, webEndpoint.getClass()))
-                 .collect(Collectors.toList());
-          })
-          .flatMap(Collection::stream)
-          .sorted(
-              // the amount of slashes should be the depth
-              Comparator.<RouteInfo>comparingInt(
-                  element -> CharMatcher.is('/').countIn(element.getRoute().getPath()))
-                  .reversed() // more slashes go first
-          )
-          .collect(Collectors.toList());
-
-      // find duplicates
-      List<String> duplicatePaths = sortedRoutes
-          .stream()
-          .collect(Collectors.groupingBy(
-              routeInfo -> string(routeInfo.getRoute()),
-              Collectors.counting()
-                   )
-          )
-          .entrySet()
-          .stream()
-          .filter(entry -> entry.getValue() > 1)
-          .map(entry -> String
-              .format("Route '%s' declared %d times", entry.getKey(), entry.getValue()))
-          .collect(Collectors.toList());
-
-      if (!duplicatePaths.isEmpty()) {
-         duplicatePaths.forEach(path -> LOGGER.error("Duplicate declaration of path '{}'", path));
-         throw new IllegalStateException("Duplicate path declarations found for web server");
-      }
-
-      sortedRoutes.forEach(route -> {
-         LOGGER.debug("Adding route: {}:{} -> {}",
-                      route.getRoute().getType(),
-                      route.getRoute().getPath(),
-                      route.getEndpointType().getSimpleName());
-         assign(sparkService, route.getRoute());
-      });
-   }
-
-   final void stop() {
-      sparkService.stop();
-   }
-
-   /**
-    * Helper class for the dispatcher that accepts all needed parameters to be able to process a
-    * service request.
-    */
-   private interface ServiceRequestProcessor {
-      void process(Service service, Route route);
-   }
-
-   private static class DefaultRequest implements io.aboutcode.stage.web.web.request.Request {
-      private final Request rawRequest;
-
-      private DefaultRequest(Request rawRequest) {
-         this.rawRequest = rawRequest;
-      }
-
-      @Override
-      public Optional<Object> attribute(String name) {
-         return Optional.ofNullable(rawRequest.attribute(name));
-      }
-
-      @Override
-      public void attribute(String name, Object value) {
-         rawRequest.attribute(name, value);
-      }
-
-      @Override
-      public Optional<String> pathParam(String name) {
-         return Optional.ofNullable(rawRequest.params(name));
-      }
-
-      @Override
-      public List<String> queryParams(String name) {
-         return Optional
-             .ofNullable(rawRequest.queryParamsValues(name))
-             .map(Stream::of)
-             .orElse(Stream.empty())
-             .collect(Collectors.toList());
-      }
-
-      @Override
-      public Optional<String> queryParam(String name) {
-         return Optional
-                 .ofNullable(rawRequest.queryParamsValues(name))
-                 .map(Stream::of)
-                 .orElse(Stream.empty())
-                 .findFirst();
-      }
-
-      @Override
-      public Set<String> queryParams() {
-         return rawRequest.queryParams();
-      }
-
-      @Override
-      public String body() {
-         return rawRequest.body();
-      }
-
-      @Override
-      public Optional<String> header(String name) {
-         return Optional.ofNullable(rawRequest.headers(name));
-      }
-
-      @Override
-      public Set<String> headers() {
-         return rawRequest.headers();
-      }
-
-      @Override
-      public RequestType method() {
-         String methodString = rawRequest.requestMethod().toUpperCase();
-         return RequestType.valueOf(methodString);
-      }
-
-      @Override
-      public Session session() {
-         return new Session() {
-            @Override
-            public <T> Optional<T> attribute(String name) {
-               return Optional.ofNullable(rawRequest.session().attribute(name));
+        // process static resources
+        if (staticFilesFolder != null) {
+            if (isStaticFolderExternal) {
+                sparkService.externalStaticFileLocation(staticFilesFolder);
+            } else {
+                sparkService.staticFileLocation(staticFilesFolder);
             }
+        }
 
-            @Override
-            public void attribute(String name, Object value) {
-               rawRequest.session().attribute(name, value);
-            }
-         };
-      }
+        //noinspection UnstableApiUsage
+        List<RouteInfo> sortedRoutes = webEndpoints
+                .stream()
+                .map(webEndpoint -> {
+                    // todo: also parse this prioritized?
+                    webEndpoint
+                            .getWebSocketRoutes()
+                            .forEach(route -> sparkService.webSocket(route.getPath(),
+                                                                     new DelegatingWebSocketHandler(
+                                                                             route.getWebSocketHandler())));
 
-      @Override
-      public String path() {
-         return rawRequest.pathInfo();
-      }
-   }
+                    return webEndpoint
+                            .getRoutes()
+                            .stream()
+                            .map(route -> new RouteInfo(route, webEndpoint.getClass()))
+                            .collect(Collectors.toList());
+                })
+                .flatMap(Collection::stream)
+                .sorted(
+                        // the amount of slashes should be the depth
+                        Comparator.<RouteInfo>comparingInt(
+                                element -> CharMatcher.is('/')
+                                                      .countIn(element.getRoute().getPath()))
+                                .reversed() // more slashes go first
+                )
+                .collect(Collectors.toList());
 
-   private static class RouteInfo {
-      private Route route;
-      private Class endpointType;
+        // find duplicates
+        List<String> duplicatePaths = sortedRoutes
+                .stream()
+                .collect(Collectors.groupingBy(
+                        routeInfo -> string(routeInfo.getRoute()),
+                        Collectors.counting()
+                         )
+                )
+                .entrySet()
+                .stream()
+                .filter(entry -> entry.getValue() > 1)
+                .map(entry -> String
+                        .format("Route '%s' declared %d times", entry.getKey(), entry.getValue()))
+                .collect(Collectors.toList());
 
-      private RouteInfo(Route route, Class endpointType) {
-         this.route = route;
-         this.endpointType = endpointType;
-      }
+        if (!duplicatePaths.isEmpty()) {
+            duplicatePaths
+                    .forEach(path -> LOGGER.error("Duplicate declaration of path '{}'", path));
+            throw new IllegalStateException("Duplicate path declarations found for web server");
+        }
 
-      private Route getRoute() {
-         return route;
-      }
+        sortedRoutes.forEach(route -> {
+            LOGGER.debug("Adding route: {}:{} -> {}",
+                         route.getRoute().getType(),
+                         route.getRoute().getPath(),
+                         route.getEndpointType().getSimpleName());
+            assign(sparkService, route.getRoute());
+        });
+    }
 
-      private Class getEndpointType() {
-         return endpointType;
-      }
-   }
+    final void stop() {
+        sparkService.stop();
+    }
+
+    /**
+     * Helper class for the dispatcher that accepts all needed parameters to be able to process a
+     * service request.
+     */
+    private interface ServiceRequestProcessor {
+        void process(Service service, Route route);
+    }
+
+    private static class DefaultRequest implements io.aboutcode.stage.web.web.request.Request {
+        private final Request rawRequest;
+
+        private DefaultRequest(Request rawRequest) {
+            this.rawRequest = rawRequest;
+        }
+
+        @Override
+        public Optional<Object> attribute(String name) {
+            return Optional.ofNullable(rawRequest.attribute(name));
+        }
+
+        @Override
+        public void attribute(String name, Object value) {
+            rawRequest.attribute(name, value);
+        }
+
+        @Override
+        public Optional<String> pathParam(String name) {
+            return Optional.ofNullable(rawRequest.params(name));
+        }
+
+        @Override
+        public List<String> queryParams(String name) {
+            return Optional
+                    .ofNullable(rawRequest.queryParamsValues(name))
+                    .map(Stream::of)
+                    .orElse(Stream.empty())
+                    .collect(Collectors.toList());
+        }
+
+        @Override
+        public Optional<String> queryParam(String name) {
+            return Optional
+                    .ofNullable(rawRequest.queryParamsValues(name))
+                    .map(Stream::of)
+                    .orElse(Stream.empty())
+                    .findFirst();
+        }
+
+        @Override
+        public Set<String> queryParams() {
+            return rawRequest.queryParams();
+        }
+
+        @Override
+        public String body() {
+            return rawRequest.body();
+        }
+
+        @Override
+        public Optional<String> header(String name) {
+            return Optional.ofNullable(rawRequest.headers(name));
+        }
+
+        @Override
+        public Set<String> headers() {
+            return rawRequest.headers();
+        }
+
+        @Override
+        public RequestType method() {
+            String methodString = rawRequest.requestMethod().toUpperCase();
+            return RequestType.valueOf(methodString);
+        }
+
+        @Override
+        public Session session() {
+            return new Session() {
+                @Override
+                public <T> Optional<T> attribute(String name) {
+                    return Optional.ofNullable(rawRequest.session().attribute(name));
+                }
+
+                @Override
+                public void attribute(String name, Object value) {
+                    rawRequest.session().attribute(name, value);
+                }
+            };
+        }
+
+        @Override
+        public String path() {
+            return rawRequest.pathInfo();
+        }
+    }
+
+    private static class RouteInfo {
+        private Route route;
+        private Class endpointType;
+
+        private RouteInfo(Route route, Class endpointType) {
+            this.route = route;
+            this.endpointType = endpointType;
+        }
+
+        private Route getRoute() {
+            return route;
+        }
+
+        private Class getEndpointType() {
+            return endpointType;
+        }
+    }
 }
