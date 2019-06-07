@@ -39,7 +39,7 @@
 
   <scm>
     <connection>scm:git:git://github.com/dev-about-code/stage.git</connection>
-    <developerConnection>scm:git:ssh://github.com:dev-about-code/stage.git</developerConnection>
+    <developerConnection>scm:git:git@github.com:dev-about-code/stage.git</developerConnection>
     <url>https://github.com/dev-about-code/stage/tree/master</url>
   </scm>
 
