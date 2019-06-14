@@ -1,21 +1,22 @@
 package io.aboutcode.stage.application;
 
 import io.aboutcode.stage.component.Component;
-import io.aboutcode.stage.component.ComponentBundle;
 import io.aboutcode.stage.component.ComponentContainer;
 import io.aboutcode.stage.concurrent.SignalCondition;
 import io.aboutcode.stage.configuration.ApplicationArgumentParser;
-import io.aboutcode.stage.configuration.ApplicationConfigurationContext;
 import io.aboutcode.stage.configuration.ArgumentParseException;
+import io.aboutcode.stage.configuration.ConfigurationContext;
 import io.aboutcode.stage.configuration.ConfigurationParameter;
 import io.aboutcode.stage.configuration.ParameterParser;
-import java.io.IOException;
-import java.nio.file.Files;
+import io.aboutcode.stage.feature.Feature;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,16 +28,18 @@ import org.slf4j.LoggerFactory;
  * <p>The container allows running an application in two ways: as a deamon that keeps running until
  * explicitly shut down or as a one-off run.</p>
  */
+// TODO: this class needs cleaning up
+// TODO: make this testable (no System.exit())
 public class ApplicationContainer {
     private static final int EXIT_NORMAL = 0;
     private static final int EXIT_ERROR = -1;
-    private final List<ConfigurationParameter> configurationParameters = new ArrayList<>();
     private final SignalCondition requireShutdown = new SignalCondition();
     private final ComponentContainer componentContainer = new ComponentContainer(
             "MainComponentContainer", requireShutdown::signalAll);
-    private Map<String, List<String>> applicationArguments;
+    private List<ConfigurationParameter> configurationParameters = new ArrayList<>();
     private String[] arguments;
     private boolean daemonize;
+    private List<Feature> features;
     private Thread runner;
     private Logger logger;
     private ApplicationStatusListener applicationStatusListener;
@@ -48,10 +51,11 @@ public class ApplicationContainer {
      *
      * @param application The application to run
      * @param arguments   The arguments to configure the application with
+     * @param features    The features to use for this application
      */
     @SuppressWarnings("unused")
-    public static void start(Application application, String[] arguments) {
-        start(application, arguments, null);
+    public static void start(Application application, String[] arguments, Feature... features) {
+        start(application, arguments, null, (Feature[]) features);
     }
 
     /**
@@ -62,11 +66,13 @@ public class ApplicationContainer {
      * @param application               The application to run
      * @param arguments                 The arguments to configure the application with
      * @param applicationStatusListener The listener that should be notified for application events
+     * @param features                  The features to use for this application
      */
     @SuppressWarnings({"unused", "WeakerAccess"})
     public static void start(Application application, String[] arguments,
-                             ApplicationStatusListener applicationStatusListener) {
-        start(application, arguments, applicationStatusListener, false);
+                             ApplicationStatusListener applicationStatusListener,
+                             Feature... features) {
+        start(application, arguments, applicationStatusListener, false, features);
     }
 
     /**
@@ -77,10 +83,12 @@ public class ApplicationContainer {
      * @param application               The application to run
      * @param arguments                 The arguments to configure the application with
      * @param applicationStatusListener The listener that should be notified for application events
+     * @param features                  The features to use for this application
      */
     @SuppressWarnings({"unused", "WeakerAccess"})
     public static void startDaemon(Application application, String[] arguments,
-                                   ApplicationStatusListener applicationStatusListener) {
+                                   ApplicationStatusListener applicationStatusListener,
+                                   Feature... features) {
         start(application, arguments, applicationStatusListener, true);
     }
 
@@ -91,15 +99,39 @@ public class ApplicationContainer {
      *
      * @param application The application to run
      * @param arguments   The arguments to configure the application with
+     * @param features    The features to use for this application
      */
     @SuppressWarnings("unused")
-    public static void startDaemon(Application application, String[] arguments) {
-        startDaemon(application, arguments, null);
+    public static void startDaemon(Application application, String[] arguments,
+                                   Feature... features) {
+        startDaemon(application, arguments, null, (Feature[]) null);
     }
 
     private static void start(Application application, String[] arguments,
-                              ApplicationStatusListener applicationStatusListener, boolean daemon) {
-        new ApplicationContainer().run(application, applicationStatusListener, arguments, daemon);
+                              ApplicationStatusListener applicationStatusListener, boolean daemon,
+                              Feature... features) {
+        new ApplicationContainer()
+                .run(application, applicationStatusListener, arguments, daemon, features);
+    }
+
+    private static List<ConfigurationParameter> configureFeatures(List<Feature> features) {
+        final List<ConfigurationParameter> configurationParameters = new ArrayList<>();
+        ConfigurationContext configurationContext = new DefaultConfigurationContext(
+                configurationParameters);
+        features.forEach(feature -> feature.configure(configurationContext));
+        return configurationParameters;
+    }
+
+    private static void applyConfiguration(
+            List<ConfigurationParameter> configurationParameters,
+            Map<String, Supplier<List<String>>> applicationArguments) {
+        for (ConfigurationParameter configurationParameter : configurationParameters) {
+            String name = configurationParameter.getName();
+            if (applicationArguments.containsKey(name)) {
+                List<String> values = applicationArguments.get(name).get();
+                configurationParameter.apply(applicationArguments.containsKey(name), values);
+            }
+        }
     }
 
     /**
@@ -113,7 +145,7 @@ public class ApplicationContainer {
     public void shutdown(String message) {
         if (componentContainer.isRunning()) {
             notifyShutdownEvent("Shutdown", 2, 0, "Shutting down application");
-            logger.info("Shutting down: " + message);
+            logger.info("Shutting down: {}", message);
             if (runner != null && runner != Thread.currentThread()) {
                 runner.interrupt();
                 try {
@@ -131,10 +163,12 @@ public class ApplicationContainer {
     }
 
     private void run(Application application, ApplicationStatusListener applicationStatusListener,
-                     String[] arguments, boolean daemon) {
+                     String[] arguments, boolean daemon, Feature... features) {
         this.applicationStatusListener = applicationStatusListener;
         this.daemonize = daemon;
         this.arguments = arguments;
+        this.features = features == null ? Collections.emptyList() :
+                        Stream.of(features).collect(Collectors.toList());
         init(application);
         System.exit(doRun(application));
     }
@@ -156,51 +190,12 @@ public class ApplicationContainer {
     }
 
     private void init(Application application) {
-
         // all standard components and other default configurations go here
         notifyStartupEvent("Initialization", 2, 0, "Initializing logging engine");
         logger = LoggerFactory.getLogger(application.getClass());
 
         // allow printing usage
         notifyStartupEvent("Initialization", 2, 1, "Configuring extra application parameters");
-        configurationParameters.add(ConfigurationParameter.File("configuration-file",
-                                                                "The file containing configuration parameters that are used in addition to any command line parameters",
-                                                                false, true, file -> {
-                    List<String> fileContents;
-                    try {
-                        fileContents = Files.lines(file.toPath())
-                                            .map(line -> "--" + line)
-                                            .collect(Collectors.toList());
-                    } catch (IOException e) {
-                        throw new IllegalStateException(String
-                                                                .format("Could not load file '%s' because: %s",
-                                                                        file.getAbsolutePath(),
-                                                                        e.getMessage()), e);
-                    }
-
-                    Map<String, List<String>> configurationProperties;
-                    try {
-                        configurationProperties = ApplicationArgumentParser
-                                .parseArguments(fileContents.toArray(new String[0]));
-                    } catch (ArgumentParseException e) {
-                        throw new IllegalStateException(String
-                                                                .format(
-                                                                        "Could not parse file contents in file '%s' because: %s",
-                                                                        file.getAbsolutePath(),
-                                                                        e.getMessage()), e);
-                    }
-
-                    // add the loaded parameters to the existing parameters if they do not exist already
-                    for (Map.Entry<String, List<String>> entry : configurationProperties
-                            .entrySet()) {
-                        String key = entry.getKey();
-                        List<String> values = entry.getValue();
-                        if (!applicationArguments.containsKey(key)) {
-                            applicationArguments.put(key, values);
-                        }
-                    }
-                }
-        ));
         configurationParameters.add(ConfigurationParameter
                                             .Option("help",
                                                     "If set, the application will print its parameters and then quit",
@@ -242,89 +237,91 @@ public class ApplicationContainer {
         logger.info(usageInformation.toString());
     }
 
-    private int doRun(Application application) {
-        notifyStartupEvent("Startup", 10, 0, "Configuring component bundle");
-        final List<ComponentBundle> componentBundles = new ArrayList<>();
-        application.configure(new DefaultApplicationConfigurationContext(
-                0,
-                componentBundles,
-                configurationParameters
-        ));
-
-        // use component bundle
-        notifyStartupEvent("Startup", 10, 1, "Configuring component bundle");
-        final List<ComponentBundle> allComponentBundles = new ArrayList<>();
-        while (!componentBundles.isEmpty()) {
-            final List<ComponentBundle> newBundles = new ArrayList<>();
-            for (ComponentBundle bundle : componentBundles) {
-                bundle.configure(new DefaultApplicationConfigurationContext(1,
-                                                                            newBundles,
-                                                                            configurationParameters));
-            }
-
-            allComponentBundles.addAll(componentBundles);
-            componentBundles.clear();
-            componentBundles.addAll(newBundles);
+    private void printMissing(List<ConfigurationParameter> configurationParameters) {
+        for (ConfigurationParameter missingParameter : configurationParameters) {
+            logger.error("Missing argument: {} - {}",
+                         missingParameter.getName(),
+                         missingParameter.getDescription());
         }
+    }
+
+    private void printSuperfluous(List<String> arguments) {
+        for (String unusedParameter : arguments) {
+            logger.warn("Unused argument found: {}", unusedParameter);
+        }
+    }
+
+    private int doRun(Application application) {
+        ApplicationProcessor applicationProcessor = ApplicationProcessor.from(application);
+
+        notifyStartupEvent("Startup", 11, 0, "Configuring component bundles");
+        configurationParameters = applicationProcessor.configure();
+
+        notifyStartupEvent("Startup", 10, 1, "Configuring features");
+        List<ConfigurationParameter> featureConfigurationParameters = configureFeatures(features);
+        this.configurationParameters.addAll(featureConfigurationParameters);
 
         notifyStartupEvent("Startup", 10, 2, "Parsing application arguments");
+        Map<String, Supplier<List<String>>> applicationArguments;
         try {
             applicationArguments = ApplicationArgumentParser.parseArguments(arguments);
         } catch (ArgumentParseException e) {
-            logger.error(
-                    String.format("Could not parse application arguments because: %s",
-                                  e.getMessage()), e);
+            requireShutdown.signalAll();
+            logger.error("Could not parse application arguments because: {}", e.getMessage(), e);
             return EXIT_ERROR;
         }
 
-        // find special argument that contains configuration parameters in file format
-        notifyStartupEvent("Startup", 10, 3, "Processing additional application arguments file");
+        notifyStartupEvent("Startup", 10, 3, "Identifying missing feature parameters");
+        ApplicationArgumentMatchResult featureMatchResult = ApplicationArgumentMatchResult
+                .between(featureConfigurationParameters, applicationArguments);
+
+        if (featureMatchResult.anyMissing()) {
+            requireShutdown.signalAll();
+            printMissing(featureMatchResult.getMissing());
+            return EXIT_ERROR;
+        }
+
+        notifyStartupEvent("Startup", 10, 4, "Applying feature parameters");
+        applyConfiguration(featureConfigurationParameters, applicationArguments);
+
+        // modifying application arguments through features
+        notifyStartupEvent("Startup", 10, 5, "Processing features");
+        if (!features.isEmpty()) {
+            for (Feature feature : features) {
+                try {
+                    applicationArguments = feature
+                            .processApplicationArguments(
+                                    Collections.unmodifiableMap(applicationArguments));
+                } catch (Exception e) {
+                    logger.error(
+                            "Could not process application arguments in feature {} because: {}",
+                            feature.getClass().getSimpleName(),
+                            e.getMessage(),
+                            e);
+                    return EXIT_ERROR;
+                }
+            }
+        }
 
         // now apply all parameters
-        notifyStartupEvent("Startup", 10, 4, "Applying configuration parameters");
-        List<String> unusedParameters = new ArrayList<>(applicationArguments.keySet());
-        List<ConfigurationParameter> missingParameters = new ArrayList<>();
-        for (ConfigurationParameter configurationParameter : configurationParameters) {
-            String name = configurationParameter.getName();
-            if (!applicationArguments.containsKey(name) && configurationParameter.isMandatory()) {
-                missingParameters.add(configurationParameter);
-            } else {
-                List<String> values = applicationArguments.get(name);
-                configurationParameter.apply(applicationArguments.containsKey(name), values);
-            }
-            unusedParameters.remove(name);
-        }
+        notifyStartupEvent("Startup", 10, 6, "Checking for invalid configurations");
+        ApplicationArgumentMatchResult matchResult = ApplicationArgumentMatchResult
+                .between(configurationParameters, applicationArguments);
 
-        List<ConfigurationParameter> stillMissingParameters = new ArrayList<>(missingParameters);
-        for (ConfigurationParameter configurationParameter : stillMissingParameters) {
-            String name = configurationParameter.getName();
-            if (applicationArguments.containsKey(name)) {
-                List<String> values = applicationArguments.get(name);
-                configurationParameter.apply(applicationArguments.containsKey(name), values);
-                missingParameters.remove(configurationParameter);
-            }
-        }
-
-        notifyStartupEvent("Startup", 10, 6, "Checking for unused configuration parameters");
-        if (unusedParameters.size() > 0) {
+        if (!matchResult.matches()) {
             requireShutdown.signalAll();
-            for (String unusedParameter : unusedParameters) {
-                logger.warn(String.format("Unused argument found: %s", unusedParameter));
+            if (matchResult.anyMissing()) {
+                printMissing(matchResult.getMissing());
             }
-        }
 
-        notifyStartupEvent("Startup", 10, 7, "Checking for missing configuration parameters");
-        if (missingParameters.size() > 0) {
-            requireShutdown.signalAll();
-            for (ConfigurationParameter missingParameter : missingParameters) {
-                logger.error(String.format("Missing argument: %s - %s", missingParameter.getName(),
-                                           missingParameter.getDescription()));
+            if (matchResult.anySuperfluous()) {
+                printSuperfluous(matchResult.getSuperfluous());
             }
-        }
-
-        if (requireShutdown.isSignalled()) {
             return EXIT_ERROR;
         }
+
+        notifyStartupEvent("Startup", 10, 7, "Applying application parameters");
+        applyConfiguration(configurationParameters, applicationArguments);
 
         notifyStartupEvent("Startup", 10, 8, "Adding components to container");
         ApplicationAssemblyContext applicationAssemblyContext = new ApplicationAssemblyContext() {
@@ -340,8 +337,7 @@ public class ApplicationContainer {
                 this.addComponent(null, component);
             }
         };
-        allComponentBundles.forEach(bundle -> bundle.assemble(applicationAssemblyContext));
-        application.assemble(applicationAssemblyContext);
+        applicationProcessor.assemble(applicationAssemblyContext);
 
         if (daemonize) {
             runner = Thread.currentThread();
@@ -382,33 +378,15 @@ public class ApplicationContainer {
         return exitCode;
     }
 
-    private class DefaultApplicationConfigurationContext implements
-            ApplicationConfigurationContext {
-        private final int processedActions;
-        private final List<ComponentBundle> componentBundles;
+    private static class DefaultConfigurationContext implements ConfigurationContext {
         private final List<ConfigurationParameter> configurationParameters;
 
-        private DefaultApplicationConfigurationContext(final int processedActions,
-                                                       final List<ComponentBundle> componentBundles,
-                                                       final List<ConfigurationParameter> configurationParameters) {
-            this.processedActions = processedActions;
-            this.componentBundles = componentBundles;
+        private DefaultConfigurationContext(List<ConfigurationParameter> configurationParameters) {
             this.configurationParameters = configurationParameters;
         }
 
         @Override
-        public void addComponentBundle(ComponentBundle componentBundle) {
-            notifyStartupEvent("Startup", 10, processedActions, String
-                    .format("Adding bundle '%s'", componentBundle.getClass().getSimpleName()));
-            componentBundles.add(componentBundle);
-        }
-
-        @Override
-        public void addConfigurationParameter(
-                ConfigurationParameter configurationParameter) {
-            notifyStartupEvent("Startup", 10, processedActions, String
-                    .format("Adding configuration parameter '%s'",
-                            configurationParameter.getName()));
+        public void addConfigurationParameter(ConfigurationParameter configurationParameter) {
             configurationParameters.add(configurationParameter);
         }
 

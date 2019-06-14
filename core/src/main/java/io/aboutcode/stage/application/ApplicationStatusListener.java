@@ -14,15 +14,15 @@ public interface ApplicationStatusListener {
      * @param processedStartupActionCount The amount of actions already processed during startup
      * @param eventInformation            Additional information on the event
      */
-    void onStartupEvent(String phase,
+    default void onStartupEvent(String phase,
                         int estimatedStartupActionCount,
                         int processedStartupActionCount,
-                        String eventInformation);
+                        String eventInformation) {}
 
     /**
      * Called when the startup procedure has concluded.
      */
-    void onStartupFinished();
+    default void onStartupFinished() {}
 
     /**
      * Called for every phase of the shutdown procedure.
@@ -32,13 +32,13 @@ public interface ApplicationStatusListener {
      * @param processedShutdownActionCount The amount of actions already processed during shutdown
      * @param eventInformation             Additional information on the event
      */
-    void onShutdownEvent(String phase,
+    default void onShutdownEvent(String phase,
                          int estimatedShutdownActionCount,
                          int processedShutdownActionCount,
-                         String eventInformation);
+                         String eventInformation) {}
 
     /**
      * Called when the shutdown procedure has concluded.
      */
-    void onShutdownFinished();
+    default void onShutdownFinished(){}
 }
