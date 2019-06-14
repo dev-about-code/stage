@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,14 +36,14 @@ public class ApplicationArgumentParser {
      *
      * @param arguments The arguments to parse
      *
-     * @return A map of parameter names to the respective values.
+     * @return A map of parameter names to the respective value providers.
      *
      * @throws ArgumentParseException Thrown if the arguments do not comply with the parsing rules
      *                                of this classe
      */
-    public static Map<String, List<String>> parseArguments(String... arguments)
+    public static Map<String, Supplier<List<String>>> parseArguments(String... arguments)
             throws ArgumentParseException {
-        Map<String, List<String>> parsedArguments = new HashMap<>();
+        Map<String, Supplier<List<String>>> parsedArguments = new HashMap<>();
 
         String currentArgumentName = null;
         List<String> currentArgumentValues = new ArrayList<>();
@@ -55,7 +56,8 @@ public class ApplicationArgumentParser {
             if (token.startsWith(TRIGGER)) {
                 // process previous argument
                 if (currentArgumentName != null) {
-                    parsedArguments.put(currentArgumentName, currentArgumentValues);
+                    parsedArguments
+                            .put(currentArgumentName, new StaticSupplier(currentArgumentValues));
                     currentArgumentValues = new ArrayList<>();
                 }
 
@@ -78,7 +80,7 @@ public class ApplicationArgumentParser {
 
         // process last argument
         if (currentArgumentName != null && !currentArgumentName.isEmpty()) {
-            parsedArguments.put(currentArgumentName, currentArgumentValues);
+            parsedArguments.put(currentArgumentName, new StaticSupplier(currentArgumentValues));
         }
 
         return parsedArguments;
@@ -91,5 +93,18 @@ public class ApplicationArgumentParser {
         }
 
         return value;
+    }
+
+    private static class StaticSupplier implements Supplier<List<String>> {
+        private final List<String> value;
+
+        private StaticSupplier(List<String> value) {
+            this.value = value;
+        }
+
+        @Override
+        public List<String> get() {
+            return value;
+        }
     }
 }
