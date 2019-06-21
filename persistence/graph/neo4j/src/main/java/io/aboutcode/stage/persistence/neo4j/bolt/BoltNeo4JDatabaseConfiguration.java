@@ -1,4 +1,4 @@
-package io.aboutcode.stage.persistence.neo4j;
+package io.aboutcode.stage.persistence.neo4j.bolt;
 
 
 import java.net.URI;
@@ -12,9 +12,9 @@ import org.neo4j.driver.v1.GraphDatabase;
  * <p>This provides easy access to different types of Neo4J database configurations.</p>
  * <p><em>Note</em> that this class is work in progress</p>
  */
-public interface Neo4JDatabaseConfiguration {
+public interface BoltNeo4JDatabaseConfiguration {
     /**
-     * Creates a new {@link Neo4JDatabaseConfiguration} using Bolt as target protocol with the
+     * Creates a new {@link BoltNeo4JDatabaseConfiguration} using Bolt as target protocol with the
      * specified parameters.
      *
      * @param serverName The name of the server to connect to
@@ -22,10 +22,10 @@ public interface Neo4JDatabaseConfiguration {
      * @param username   The user to connect with
      * @param password   The password of the database user
      *
-     * @return An instance of {@link Neo4JDatabaseConfiguration}
+     * @return An instance of {@link BoltNeo4JDatabaseConfiguration}
      */
-    static Neo4JDatabaseConfiguration bolt(String serverName, int port, String username,
-                                           String password) {
+    static BoltNeo4JDatabaseConfiguration bolt(String serverName, int port, String username,
+                                               String password) {
         // todo: add logging
         //final Logger logger = LoggerFactory.getLogger(Neo4JDatabaseConfiguration.class);
         Config config = Config

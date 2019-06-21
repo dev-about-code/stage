@@ -14,9 +14,10 @@
 
   <modules>
     <module>core</module>
-    <module>orm</module>
     <module>jdbc</module>
+    <module>orm</module>
     <module>graph</module>
+    <module>relational</module>
   </modules>
 
   <name>Stage persistence</name>

@@ -1,4 +1,4 @@
-package io.aboutcode.stage.persistence.neo4j;
+package io.aboutcode.stage.persistence.neo4j.bolt;
 
 import io.aboutcode.stage.component.BaseComponent;
 import io.aboutcode.stage.persistence.Persistence;
@@ -12,8 +12,8 @@ import org.neo4j.driver.v1.TransactionWork;
 /**
  * An implementation of {@link Persistence} that allows access to a Neo4J graph database.
  */
-public class Neo4JPersistence extends BaseComponent implements Persistence<Transaction> {
-    private Neo4JDatabaseConfiguration databaseConfiguration;
+public class BoltNeo4JPersistence extends BaseComponent implements Persistence<Transaction> {
+    private BoltNeo4JDatabaseConfiguration databaseConfiguration;
     private Driver driver;
 
     /**
@@ -21,7 +21,7 @@ public class Neo4JPersistence extends BaseComponent implements Persistence<Trans
      *
      * @param databaseConfiguration The configuration for the underlying database
      */
-    public Neo4JPersistence(Neo4JDatabaseConfiguration databaseConfiguration) {
+    public BoltNeo4JPersistence(BoltNeo4JDatabaseConfiguration databaseConfiguration) {
         this.databaseConfiguration = databaseConfiguration;
     }
 

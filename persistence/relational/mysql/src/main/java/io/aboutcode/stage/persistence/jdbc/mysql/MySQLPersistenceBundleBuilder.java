@@ -1,5 +1,6 @@
 package io.aboutcode.stage.persistence.jdbc.mysql;
 
+import com.zaxxer.hikari.HikariConfig;
 import io.aboutcode.stage.application.ApplicationAssemblyContext;
 import io.aboutcode.stage.component.ComponentBundle;
 import io.aboutcode.stage.component.ComponentContainer;
@@ -93,24 +94,14 @@ public final class MySQLPersistenceBundleBuilder {
 
             @Override
             public void assemble(ApplicationAssemblyContext context) {
-                JDBCPersistence jdbcPersistence =
-                        new JDBCPersistence(JDBCDatabaseConfiguration.MySQL(datasourceClass,
-                                                                            configuration.getHost(),
-                                                                            configuration
-                                                                                    .getDatabase(),
-                                                                            configuration
-                                                                                    .getUsername(),
-                                                                            configuration
-                                                                                    .getPassword(),
-                                                                            configuration
-                                                                                    .getPort()));
+                JDBCPersistence jdbcPersistence = new JDBCPersistence(configuration);
                 context.addComponent(componentIdentifier, jdbcPersistence);
             }
         };
     }
 
 
-    private class MySQLConfiguration {
+    private class MySQLConfiguration implements JDBCDatabaseConfiguration {
         @Parameter(name = "database-host", description = "The database server host name to connect to")
         private String host;
         @Parameter(name = "database-port", description = "The port to which to connect on the database server", mandatory = false)
@@ -122,27 +113,17 @@ public final class MySQLPersistenceBundleBuilder {
         @Parameter(name = "database-password", description = "The password to connect to the database with")
         private String password;
 
-        MySQLConfiguration() {
-        }
-
-        private String getHost() {
-            return host;
-        }
-
-        private Integer getPort() {
-            return port;
-        }
-
-        private String getUsername() {
-            return username;
-        }
-
-        private String getPassword() {
-            return password;
-        }
-
-        private String getDatabase() {
-            return database;
+        @Override
+        public HikariConfig apply(HikariConfig targetConfiguration) {
+            targetConfiguration.setDataSourceClassName(datasourceClass.getName());
+            targetConfiguration.addDataSourceProperty("serverName", host);
+            if (port != null) {
+                targetConfiguration.addDataSourceProperty("port", port);
+            }
+            targetConfiguration.addDataSourceProperty("databaseName", database);
+            targetConfiguration.addDataSourceProperty("user", username);
+            targetConfiguration.addDataSourceProperty("password", password);
+            return targetConfiguration;
         }
     }
 }
