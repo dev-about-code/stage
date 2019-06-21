@@ -147,7 +147,7 @@ public class DependencyTreeBuilderTest {
 
     private void testWith(Map<Object, DependencyAware> components, Object... expectedOrder)
             throws DependencyException {
-        List<Object> actualOrder = DependencyTreeBuilder.buildTree(components);
+        List<Object> actualOrder = DependencyTreeBuilder.buildTree(components, type -> type);
         assertEquals(Arrays.asList(expectedOrder), actualOrder);
     }
 

@@ -1,14 +1,19 @@
 package io.aboutcode.stage.component;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import io.aboutcode.stage.dependency.DependencyAware;
 import io.aboutcode.stage.dependency.DependencyContext;
 import io.aboutcode.stage.dependency.DependencyException;
-import io.aboutcode.stage.lifecycle.LifeCycleException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.junit.After;
 import org.junit.Assert;
@@ -23,18 +28,18 @@ public class ComponentContainerTest {
     private ComponentContainer container;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         container = new ComponentContainer("TEST", () -> {
             throw new IllegalStateException("Cannot shutdown");
         });
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
     }
 
     @Test
-    public void testStartOrder() throws Exception {
+    public void testStartOrder() {
         List<String> order = new ArrayList<>();
         Consumer<String> startFunction = order::add;
         container.addComponent("A", new ResolvingComponent("A", startFunction, "B"));
@@ -49,8 +54,46 @@ public class ComponentContainerTest {
         assertOrder(order, "D", "C", "B", "A", "E", "F");
     }
 
+    @Test
+    public void testDefaultResolve() {
+        AtomicReference<EmptyComponent> resolvedComponent = new AtomicReference<>();
+        EmptyComponent defaultComponent = new EmptyComponent();
+        container.addComponent(null, defaultComponent);
+        container.addComponent("A", new EmptyComponent());
+        container.addComponent("B", new BaseComponent() {
+            @Override
+            public void resolve(DependencyContext context) throws DependencyException {
+                resolvedComponent.set(context.retrieveDependency(EmptyComponent.class));
+            }
+        });
+        container.start();
+        assertTrue(container.isRunning());
+        container.stop();
+
+        assertNotNull(resolvedComponent.get());
+        assertEquals(defaultComponent, resolvedComponent.get());
+    }
+
+    @Test
+    public void testDefaultResolveInvalid() {
+        AtomicReference<EmptyComponent> resolvedComponent = new AtomicReference<>();
+        EmptyComponent defaultComponent = new EmptyComponent();
+        container.addComponent("X", defaultComponent);
+        container.addComponent("A", new EmptyComponent());
+        container.addComponent("B", new BaseComponent() {
+            @Override
+            public void resolve(DependencyContext context) throws DependencyException {
+                resolvedComponent.set(context.retrieveDependency(EmptyComponent.class));
+            }
+        });
+        container.start();
+        assertFalse(container.isRunning());
+
+        assertNull(resolvedComponent.get());
+    }
+
     private void assertOrder(List<String> result, String... expected) {
-        Assert.assertArrayEquals(expected, result.toArray(new String[result.size()]));
+        Assert.assertArrayEquals(expected, result.toArray(new String[0]));
     }
 
     @Test
@@ -145,7 +188,7 @@ public class ComponentContainerTest {
         }
 
         @Override
-        public void start() throws LifeCycleException {
+        public void start() {
             startFunction.accept(name);
         }
 
@@ -155,5 +198,9 @@ public class ComponentContainerTest {
                 context.retrieveDependency(component, DependencyAware.class, true);
             }
         }
+    }
+
+    private static class EmptyComponent extends BaseComponent {
+
     }
 }
