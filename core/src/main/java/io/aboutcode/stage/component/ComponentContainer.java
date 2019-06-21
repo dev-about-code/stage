@@ -356,7 +356,8 @@ public class ComponentContainer {
                                            .stream()
                                            .collect(Collectors.toMap(Map.Entry::getKey,
                                                                      entry -> entry
-                                                                             .getValue().component)));
+                                                                             .getValue().component))
+                                , type -> type);
             } catch (DependencyException e) {
                 logger.error(String.format("Dependency exception detected: %s", e.getMessage()));
                 return false;
