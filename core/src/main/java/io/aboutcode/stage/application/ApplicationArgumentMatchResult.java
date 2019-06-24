@@ -2,11 +2,13 @@ package io.aboutcode.stage.application;
 
 import io.aboutcode.stage.configuration.ConfigurationParameter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
 final class ApplicationArgumentMatchResult {
+    private static final Supplier<List<String>> EMPTY_SUPPLIER = Collections::emptyList;
     private final List<String> superfluousKeys;
     private final List<ConfigurationParameter> missingKeys;
 
@@ -29,7 +31,7 @@ final class ApplicationArgumentMatchResult {
             if (!applicationArguments.containsKey(name) && configurationParameter.isMandatory()) {
                 missingParameters.add(configurationParameter);
             } else {
-                List<String> values = applicationArguments.get(name).get();
+                List<String> values = applicationArguments.getOrDefault(name, EMPTY_SUPPLIER).get();
                 configurationParameter.apply(applicationArguments.containsKey(name), values);
             }
             unusedParameters.remove(name);
