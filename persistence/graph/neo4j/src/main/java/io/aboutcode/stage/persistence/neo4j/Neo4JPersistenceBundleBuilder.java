@@ -18,7 +18,7 @@ import org.neo4j.driver.v1.AuthTokens;
 import org.neo4j.driver.v1.Config;
 import org.neo4j.driver.v1.Driver;
 import org.neo4j.driver.v1.GraphDatabase;
-import org.neo4j.jdbc.Neo4jDataSource;
+import org.neo4j.jdbc.bolt.BoltNeo4jDataSource;
 
 /**
  * This adds a Neo4J persistence component to the application. The bundle will add the correct
@@ -139,10 +139,6 @@ public final class Neo4JPersistenceBundleBuilder {
             BoltNeo4JDatabaseConfiguration {
         @Parameter(name = "database-host", description = "The database server host name to connect to")
         private String host;
-        @Parameter(name = "database-port", description = "The port to which to connect on the database server", mandatory = false)
-        private Integer port = DEFAULT_PORT;
-        @Parameter(name = "database-name", description = "The name of the database (schema) to connect to")
-        private String database;
         @Parameter(name = "database-username", description = "The username to connect to the database with")
         private String username;
         @Parameter(name = "database-password", description = "The password to connect to the database with")
@@ -150,12 +146,8 @@ public final class Neo4JPersistenceBundleBuilder {
 
         @Override
         public HikariConfig apply(HikariConfig targetConfiguration) {
-            targetConfiguration.setDataSourceClassName(Neo4jDataSource.class.getName());
+            targetConfiguration.setDataSourceClassName(BoltNeo4jDataSource.class.getName());
             targetConfiguration.addDataSourceProperty("serverName", host);
-            if (port != null) {
-                targetConfiguration.addDataSourceProperty("port", port);
-            }
-            targetConfiguration.addDataSourceProperty("databaseName", database);
             targetConfiguration.addDataSourceProperty("user", username);
             targetConfiguration.addDataSourceProperty("password", password);
             return targetConfiguration;
@@ -171,7 +163,7 @@ public final class Neo4JPersistenceBundleBuilder {
                     .toConfig();
             URI uri;
             try {
-                uri = new URI("bolt", null, host, port, null, null, null);
+                uri = new URI("bolt", null, host, DEFAULT_PORT, null, null, null);
             } catch (URISyntaxException e) {
                 throw new IllegalArgumentException("Could not create connection url because: " +
                                                    e.getMessage(), e);
