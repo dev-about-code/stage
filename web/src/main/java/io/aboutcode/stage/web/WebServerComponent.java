@@ -3,7 +3,6 @@ package io.aboutcode.stage.web;
 import io.aboutcode.stage.component.BaseComponent;
 import io.aboutcode.stage.dependency.DependencyContext;
 import io.aboutcode.stage.dependency.DependencyException;
-import io.aboutcode.stage.lifecycle.LifeCycleException;
 import io.aboutcode.stage.web.web.WebEndpoint;
 import io.aboutcode.stage.web.web.response.renderer.ResponseRenderer;
 import java.util.HashSet;
@@ -51,7 +50,7 @@ final class WebServerComponent extends BaseComponent {
     }
 
     @Override
-    public final void start() throws LifeCycleException {
+    public final void start() {
         // create the basic service and initialize it
         sparkServer = new SparkServer(port,
                                       tslConfiguration,

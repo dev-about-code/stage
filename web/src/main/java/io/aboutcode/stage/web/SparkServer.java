@@ -5,12 +5,15 @@ import io.aboutcode.stage.dispatch.Dispatcher;
 import io.aboutcode.stage.web.web.Route;
 import io.aboutcode.stage.web.web.Session;
 import io.aboutcode.stage.web.web.WebEndpoint;
+import io.aboutcode.stage.web.web.request.Part;
 import io.aboutcode.stage.web.web.request.RequestHandler;
 import io.aboutcode.stage.web.web.request.RequestType;
 import io.aboutcode.stage.web.web.response.InternalServerError;
 import io.aboutcode.stage.web.web.response.Ok;
 import io.aboutcode.stage.web.web.response.renderer.ResponseRenderer;
 import io.aboutcode.stage.web.websocket.DelegatingWebSocketHandler;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -18,6 +21,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.servlet.MultipartConfigElement;
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -372,6 +377,18 @@ final class SparkServer {
         public String path() {
             return rawRequest.pathInfo();
         }
+
+        @Override
+        public Stream<Part> parts() throws IOException {
+            rawRequest.attribute("org.eclipse.jetty.multipartConfig",
+                                 new MultipartConfigElement((String) null));
+
+            try {
+                return rawRequest.raw().getParts().stream().map(WrappingPart::new);
+            } catch (ServletException e) {
+                throw new IOException(e);
+            }
+        }
     }
 
     private static class RouteInfo {
@@ -389,6 +406,39 @@ final class SparkServer {
 
         private Class getEndpointType() {
             return endpointType;
+        }
+    }
+
+    private static class WrappingPart implements Part {
+        private final javax.servlet.http.Part delegate;
+
+        private WrappingPart(javax.servlet.http.Part delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public InputStream getInputStream() throws IOException {
+            return delegate.getInputStream();
+        }
+
+        @Override
+        public String getContentType() {
+            return delegate.getContentType();
+        }
+
+        @Override
+        public String getName() {
+            return delegate.getName();
+        }
+
+        @Override
+        public String getSubmittedFileName() {
+            return delegate.getSubmittedFileName();
+        }
+
+        @Override
+        public long getSize() {
+            return delegate.getSize();
         }
     }
 }
