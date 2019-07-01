@@ -1,9 +1,11 @@
 package io.aboutcode.stage.web.web.request;
 
 import io.aboutcode.stage.web.web.Session;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * This represents a HTTP request from a client to the web server. The request will be passed on
@@ -111,4 +113,13 @@ public interface Request {
      * @return The path the current request was invoked on
      */
     String path();
+
+    /**
+     * Returns a stream of all the <code>multipart/form-data</code> parts in this request.
+     *
+     * @return A stream over all parts in this <code>multipart/form-data</code> request
+     *
+     * @throws IOException Thrown if accessing the parts in the request cause an exception
+     */
+    Stream<Part> parts() throws IOException;
 }
