@@ -1,17 +1,13 @@
 package io.aboutcode.stage.configuration;
 
-import io.aboutcode.stage.dispatch.Dispatcher;
+import io.aboutcode.stage.util.FieldAnalysis;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -20,12 +16,9 @@ import java.util.stream.Stream;
  * {@link ConfigurationParameter}s extracted from its members that are annotated with {@link
  * Parameter}</p>
  */
+// TODO: refactor this to completely use FieldAnalysis
 public final class ParameterParser {
     private static final String TRAILING_DASHES = "-+$";
-    private static final Dispatcher<Class, Supplier<Collection>> COLLECTION_CREATOR =
-            Dispatcher.<Class, Supplier<Collection>>of(Set.class, HashSet::new)
-                    .with(List.class, ArrayList::new)
-                    .with(Collection.class, ArrayList::new);
 
     /**
      * Returns a list of {@link ConfigurationParameter}s for the specified configuration object's
@@ -52,10 +45,11 @@ public final class ParameterParser {
     }
 
     private static ConfigurationParameter array(Parameter parameter,
+                                                String parameterPrefix,
                                                 FieldAnalysis fieldAnalysis,
                                                 InputConverter inputConverter) {
         return new ArrayConfigurationParameter(
-                withPrefix(fieldAnalysis.getParameterPrefix(), parameter.name()),
+                withPrefix(parameterPrefix, parameter.name()),
                 parameter.description(),
                 parameter.mandatory(),
                 getTypeName(fieldAnalysis.getField().getClass()),
@@ -68,10 +62,11 @@ public final class ParameterParser {
     }
 
     private static ConfigurationParameter singleValue(Parameter parameter,
+                                                      String parameterPrefix,
                                                       FieldAnalysis fieldAnalysis,
                                                       InputConverter inputConverter) {
         return new DefaultConfigurationParameter(
-                withPrefix(fieldAnalysis.getParameterPrefix(), parameter.name()),
+                withPrefix(parameterPrefix, parameter.name()),
                 parameter.description(),
                 parameter.mandatory(),
                 getTypeName(fieldAnalysis.getSpecificClass()),
@@ -83,19 +78,17 @@ public final class ParameterParser {
     }
 
     private static ConfigurationParameter collection(Parameter parameter,
+                                                     String parameterPrefix,
                                                      FieldAnalysis fieldAnalysis,
                                                      InputConverter inputConverter) {
         return new CollectionConfigurationParameter(
-                withPrefix(fieldAnalysis.getParameterPrefix(), parameter.name()),
+                withPrefix(parameterPrefix, parameter.name()),
                 parameter.description(),
                 parameter.mandatory(),
                 getTypeName(fieldAnalysis.getSpecificClass()),
-                fieldAnalysis.getTargetObject(),
-                fieldAnalysis.getField(),
                 fieldAnalysis.getDefaultValue(),
                 inputConverter,
-                fieldAnalysis.getCollectionClass(),
-                () -> instantiateCollection(fieldAnalysis)
+                fieldAnalysis
         );
     }
 
@@ -114,7 +107,7 @@ public final class ParameterParser {
             Object targetObject) {
         Parameter annotation = getParameterAnnotation(field);
 
-        FieldAnalysis fieldAnalysis = FieldAnalysis.of(parameterPrefix, field, targetObject);
+        FieldAnalysis fieldAnalysis = FieldAnalysis.of(field, targetObject);
 
         InputConverter<Object> inputConverter;
         if (annotation.inputConverter() == InputConverter.class) {
@@ -141,13 +134,13 @@ public final class ParameterParser {
         ConfigurationParameter result;
         switch (fieldAnalysis.getFieldType()) {
             case ARRAY:
-                result = array(annotation, fieldAnalysis, inputConverter);
+                result = array(annotation, parameterPrefix, fieldAnalysis, inputConverter);
                 break;
             case COLLECTION:
-                result = collection(annotation, fieldAnalysis, inputConverter);
+                result = collection(annotation, parameterPrefix, fieldAnalysis, inputConverter);
                 break;
             case SINGLE_VALUE:
-                result = singleValue(annotation, fieldAnalysis, inputConverter);
+                result = singleValue(annotation, parameterPrefix, fieldAnalysis, inputConverter);
                 break;
             default:
                 result = null;
@@ -175,70 +168,37 @@ public final class ParameterParser {
         }
     }
 
-    private static Object convert(InputConverter inputConverter, String value, String typeName,
+    private static Object convert(InputConverter inputConverter, String value,
                                   String parameterName) {
         try {
             return inputConverter.convert(value);
         } catch (Exception e) {
             throw new IllegalArgumentException(
                     String.format(
-                            "Could not convert value '%s' to type '%s' for parameter '%s' because: %s",
+                            "Could not convert value '%s' to target type for parameter '%s' because: %s",
                             value,
-                            typeName,
                             parameterName,
                             e.getMessage()));
         }
     }
 
-    private static Collection instantiateCollection(FieldAnalysis fieldAnalysis) {
-        return Optional.ofNullable(
-                COLLECTION_CREATOR.dispatch(fieldAnalysis.getCollectionClass())
-                                  .orElse(() -> {
-                                      try {
-                                          return (Collection) fieldAnalysis.getCollectionClass()
-                                                                           .newInstance();
-                                      } catch (InstantiationException | IllegalAccessException e) {
-                                          return null;
-                                      }
-                                  }).get()
-        ).orElseThrow(() -> new IllegalArgumentException(
-                String.format("Could not create instance of collection type '%s' for field '%s'",
-                              fieldAnalysis.getCollectionClass().getSimpleName(),
-                              fieldAnalysis.getField().getName())
-        ));
-    }
-
-    private enum FieldType {
-        SINGLE_VALUE,
-        ARRAY,
-        COLLECTION
-    }
-
     private static class CollectionConfigurationParameter extends ConfigurationParameter {
-        private final Object targetObject;
-        private final Supplier<Collection> collectionSupplier;
-        private final Field field;
         private final Object defaultValue;
         private final InputConverter inputConverter;
-        private Class collectionType;
+        private final FieldAnalysis fieldAnalysis;
 
         private CollectionConfigurationParameter(String name,
                                                  String description,
                                                  boolean mandatory,
                                                  String typeName,
-                                                 Object targetObject,
-                                                 Field field,
                                                  Object defaultValue,
                                                  InputConverter inputConverter,
-                                                 Class collectionType,
-                                                 Supplier<Collection> collectionSupplier) {
+                                                 FieldAnalysis fieldAnalysis
+        ) {
             super(name, description, mandatory, typeName);
-            this.targetObject = targetObject;
-            this.collectionSupplier = collectionSupplier;
-            this.field = field;
             this.defaultValue = defaultValue;
             this.inputConverter = inputConverter;
-            this.collectionType = collectionType;
+            this.fieldAnalysis = fieldAnalysis;
         }
 
         @Override
@@ -247,18 +207,16 @@ public final class ParameterParser {
             Collection collection = (Collection) defaultValue;
 
             if (isParameterPresent) {
-                collection = collectionSupplier.get();
+                Collection convertedValues = new ArrayList();
                 for (String value : values) {
                     //noinspection unchecked
-                    collection.add(
-                            convert(inputConverter, value, collectionType.getSimpleName(),
-                                    getName())
-                    );
+                    convertedValues.add(convert(inputConverter, value, getName()));
                 }
+                collection = convertedValues;
             }
+
             try {
-                field.setAccessible(true);
-                field.set(targetObject, collection);
+                fieldAnalysis.assign(collection);
             } catch (Exception e) {
                 throw new IllegalArgumentException(
                         String.format(
@@ -268,6 +226,7 @@ public final class ParameterParser {
                                 getName(),
                                 e.getMessage()));
             }
+
         }
     }
 
@@ -303,11 +262,11 @@ public final class ParameterParser {
                 array = Array.newInstance(arrayType, values.size());
                 int pos = 0;
                 for (String value : values) {
-                    Array.set(array, pos++,
-                              convert(inputConverter, value, arrayType.getSimpleName(), getName()));
+                    Array.set(array, pos++, convert(inputConverter, value, getName()));
                 }
             }
             try {
+                field.setAccessible(true);
                 field.set(targetObject, array);
             } catch (Exception e) {
                 throw new IllegalArgumentException(
@@ -348,8 +307,8 @@ public final class ParameterParser {
                 throws IllegalArgumentException {
             try {
                 field.set(targetObject,
-                          !isParameterPresent ? defaultValue :
-                          convert(inputConverter, value, getTypeName(), getName()));
+                          !isParameterPresent ? defaultValue
+                                              : convert(inputConverter, value, getName()));
             } catch (Exception e) {
                 throw new IllegalArgumentException(
                         String.format(
@@ -358,107 +317,6 @@ public final class ParameterParser {
                                 targetObject.getClass().getSimpleName(),
                                 e.getMessage()));
             }
-        }
-    }
-
-    private static class FieldAnalysis {
-
-        private final FieldType fieldType;
-        private final Class collectionClass;
-        private final Class specificClass;
-        private final Field field;
-        private final Object defaultValue;
-        private final Object targetObject;
-        private String parameterPrefix;
-
-        private FieldAnalysis(String parameterPrefix, FieldType fieldType, Class collectionClass,
-                              Class specificClass,
-                              Field field, Object defaultValue, Object targetObject) {
-            this.parameterPrefix = parameterPrefix;
-            this.fieldType = fieldType;
-            this.collectionClass = collectionClass;
-            this.specificClass = specificClass;
-            this.field = field;
-            this.defaultValue = defaultValue;
-            this.targetObject = targetObject;
-        }
-
-        public static FieldAnalysis of(String parameterPrefix,
-                                       Field field,
-                                       Object targetObject) {
-            Class<?> type = field.getType();
-            Object defaultValue;
-            try {
-                field.setAccessible(true);
-                defaultValue = field.get(targetObject);
-            } catch (IllegalAccessException e) {
-                throw new IllegalArgumentException(
-                        String.format("Could not extract default value from field '%s' because: %s",
-                                      field.getName(),
-                                      e.getMessage())
-                );
-            }
-
-            if (Collection.class.isAssignableFrom(type)) {
-                Class specificClass = (Class) ((ParameterizedType) field.getGenericType())
-                        .getActualTypeArguments()[0];
-                return new FieldAnalysis(parameterPrefix,
-                                         FieldType.COLLECTION,
-                                         type,
-                                         specificClass,
-                                         field,
-                                         defaultValue,
-                                         targetObject);
-            }
-
-            Class<?> arrayComponentType = type.getComponentType();
-            if (arrayComponentType != null) {
-                return new FieldAnalysis(
-                        parameterPrefix,
-                        FieldType.ARRAY,
-                        null,
-                        arrayComponentType,
-                        field,
-                        defaultValue,
-                        targetObject);
-            }
-
-            return new FieldAnalysis(
-                    parameterPrefix,
-                    FieldType.SINGLE_VALUE,
-                    null,
-                    type,
-                    field,
-                    defaultValue,
-                    targetObject);
-        }
-
-        String getParameterPrefix() {
-            return parameterPrefix;
-        }
-
-        FieldType getFieldType() {
-            return fieldType;
-        }
-
-        Class getCollectionClass() {
-            return collectionClass;
-        }
-
-        Class getSpecificClass() {
-            return specificClass;
-        }
-
-        Field getField() {
-            return field;
-        }
-
-        Object getDefaultValue() {
-            return defaultValue;
-        }
-
-        Object getTargetObject() {
-            return targetObject;
         }
     }
 }
