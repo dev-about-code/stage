@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import io.aboutcode.stage.dependency.DependencyAware;
 import io.aboutcode.stage.dependency.DependencyContext;
 import io.aboutcode.stage.dependency.DependencyException;
+import io.aboutcode.stage.dependency.Resolved;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -142,7 +143,19 @@ public class DependencyTreeBuilderTest {
                 context.retrieveDependency(DummyComponent.class);
             }
         });
-        testWith(allComponents, "C", "B", "A");
+        // expects exception!
+        testWith(allComponents, "A", "B", "C");
+    }
+
+    @Test
+    public void testAnnotatedResolving() throws Exception {
+        Map<Object, DependencyAware> allComponents = new HashMap<>();
+        allComponents.put("A", new ResolvingComponent("B"));
+        allComponents.put("B", new ResolvingComponent("C"));
+        allComponents.put("C", new DummyComponent());
+        allComponents.put("D", new DummyComponent2());
+        allComponents.put("E", new AnnotatedComponent());
+        testWith(allComponents, "C", "B", "A", "D", "E");
     }
 
     private void testWith(Map<Object, DependencyAware> components, Object... expectedOrder)
@@ -191,5 +204,14 @@ public class DependencyTreeBuilderTest {
                 context.retrieveDependency(component, DependencyAware.class, true);
             }
         }
+    }
+
+    private class AnnotatedComponent implements DependencyAware {
+        @Resolved(identifier = "A")
+        private ResolvingComponent componentOne;
+        @Resolved(identifier = "B")
+        private ResolvingComponent componentTwo;
+        @Resolved
+        private DummyComponent2 componentThree;
     }
 }

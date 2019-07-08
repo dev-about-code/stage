@@ -1,5 +1,6 @@
 package io.aboutcode.stage.component;
 
+import io.aboutcode.stage.dependency.AnnotatedDependencyParser;
 import io.aboutcode.stage.dependency.DependencyAware;
 import io.aboutcode.stage.dependency.DependencyContext;
 import io.aboutcode.stage.dependency.DependencyException;
@@ -63,7 +64,9 @@ class DependencyTreeBuilder {
             synchronized (allElements) {
                 element = allElements.get(identifier);
             }
-            element.resolve(new DependencyContext() {
+
+            // create dependency context
+            DependencyContext dependencyContext = new DependencyContext() {
                 @Override
                 public <DependencyT> DependencyT retrieveDependency(Class<DependencyT> type)
                         throws DependencyException {
@@ -105,7 +108,7 @@ class DependencyTreeBuilder {
 
                     Object componentIdentifier = null;
                     synchronized (allElements) {
-                        for (Map.Entry<Object, DependencyAware> entry : allElements.entrySet()) {
+                        for (Entry<Object, DependencyAware> entry : allElements.entrySet()) {
                             if (entry.getValue().equals(dependency)) {
                                 componentIdentifier = entry.getKey();
                                 break;
@@ -155,7 +158,7 @@ class DependencyTreeBuilder {
                     for (DependencyT dependency : allDependencies) {
                         Object componentIdentifier = null;
                         synchronized (allElements) {
-                            for (Map.Entry<Object, DependencyAware> entry : allElements
+                            for (Entry<Object, DependencyAware> entry : allElements
                                     .entrySet()) {
                                 if (entry.getValue().equals(dependency)) {
                                     componentIdentifier = entry.getKey();
@@ -185,7 +188,16 @@ class DependencyTreeBuilder {
                                     entry -> (DependencyT) entry.getValue()
                             ));
                 }
-            });
+            };
+
+            // resolve annotated fields
+            for (DependencyAware dependencyAware :
+                    AnnotatedDependencyParser.parseAnnotations(element)) {
+                dependencyAware.resolve(dependencyContext);
+            }
+
+            // resolve implemented method
+            element.resolve(dependencyContext);
 
             processedElements.add(currentElementStack.pop());
         }
