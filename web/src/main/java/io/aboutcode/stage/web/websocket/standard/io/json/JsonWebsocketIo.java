@@ -1,21 +1,26 @@
-package io.aboutcode.stage.web.websocket.standard.io;
+package io.aboutcode.stage.web.websocket.standard.io.json;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.ImmutableBiMap;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.aboutcode.stage.util.Tuple2;
-import io.aboutcode.stage.web.websocket.WebSocketIo;
+import io.aboutcode.stage.web.websocket.WebsocketIo;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
  * This serializes and deserializes messages to and from Json format.
  */
-public class JsonWebSocketIo implements WebSocketIo<JsonMessage> {
+public final class JsonWebsocketIo implements WebsocketIo<JsonMessage> {
     private static final Gson gson = new GsonBuilder().create();
-    private final Map<String, Class<? extends JsonMessage>> messageIdentifierToMessageClass = new HashMap<>();
+    private final BiMap<String, Class<? extends JsonMessage>> messageIdentifierToMessageClass;
+
+    public JsonWebsocketIo(Map<String, Class<? extends JsonMessage>> messages) {
+        messageIdentifierToMessageClass = ImmutableBiMap.copyOf(messages);
+    }
 
     private static Tuple2<String, JsonObject> getIdentifier(String message) {
         JsonParser parser = new JsonParser();
@@ -24,13 +29,8 @@ public class JsonWebSocketIo implements WebSocketIo<JsonMessage> {
     }
 
     @Override
-    public <TargetT extends JsonMessage> void registerMessageType(String identifier,
-                                                                  Class<TargetT> type) {
-        messageIdentifierToMessageClass.put(identifier, type);
-    }
-
-    @Override
-    public String serialize(Object element) throws IOException {
+    public String serialize(JsonMessage element) {
+        element.setIdentifier(messageIdentifierToMessageClass.inverse().get(element.getClass()));
         return gson.toJson(element);
     }
 
