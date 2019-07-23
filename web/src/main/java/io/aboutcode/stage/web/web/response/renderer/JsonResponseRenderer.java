@@ -37,7 +37,7 @@ public class JsonResponseRenderer implements ResponseRenderer {
     }
 
     @Override
-    public String render(Request request, Response response) {
+    public Object render(Request request, Response response) {
         HttpHeader.CONTENT_TYPE.set(response, responseType.toString());
         return response.data() == null ? null : parser.toJson(response.data());
     }

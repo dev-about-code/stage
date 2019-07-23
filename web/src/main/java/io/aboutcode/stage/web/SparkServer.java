@@ -131,7 +131,7 @@ final class SparkServer {
                                                   process(request,
                                                           route.getRequestHandler());
 
-                                          apply(rawResponse, request, response, false);
+                                          apply(rawResponse, request, response);
                                       }
                                   });
     }
@@ -153,29 +153,23 @@ final class SparkServer {
                                              // routes always finish a request
                                              response = process(request, route.getRequestHandler());
                                          }
-                                         return apply(rawResponse, request, response, true);
+                                         return apply(rawResponse, request, response);
                                      }
                                  });
     }
 
-    private String apply(Response rawResponse,
+    private Object apply(Response rawResponse,
                          io.aboutcode.stage.web.web.request.Request request,
-                         io.aboutcode.stage.web.web.response.Response response,
-                         boolean canFinish) {
+                         io.aboutcode.stage.web.web.response.Response response) {
         HttpServletResponse servletResponse = rawResponse.raw();
 
         // produce body
-        String body = responseRenderer.render(request, response);
+        Object body = responseRenderer.render(request, response);
 
         // add headers to spark response
         response
                 .headers()
                 .forEach(servletResponse::setHeader);
-
-        // do we need to halt?
-        if (canFinish && response.finished()) {
-            Spark.halt(response.status(), body);
-        }
 
         request.attribute(KEY_RESPONSE, response);
 
