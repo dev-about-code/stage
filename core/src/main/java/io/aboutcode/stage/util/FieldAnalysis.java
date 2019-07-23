@@ -1,15 +1,11 @@
 package io.aboutcode.stage.util;
 
 import io.aboutcode.stage.dispatch.Dispatcher;
+
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Supplier;
 
 public final class FieldAnalysis {
@@ -106,6 +102,10 @@ public final class FieldAnalysis {
     }
 
     private Object instantiateArray(Object value) {
+        if (value == null) {
+            return null;
+        }
+
         int length = Array.getLength(value);
         Object array = Array.newInstance(getSpecificClass(), length);
         for (int i = 0; i < length; i++) {
@@ -115,6 +115,10 @@ public final class FieldAnalysis {
     }
 
     private Collection instantiateCollection(Object value) {
+        if (value == null) {
+            return null;
+        }
+
         return Optional.ofNullable(
                 COLLECTION_CREATOR.dispatch(getCollectionClass())
                                   .orElse(() -> {
@@ -124,7 +128,7 @@ public final class FieldAnalysis {
                                           return null;
                                       }
                                   }).get()
-        ).map(targetCollection -> {
+                                  ).map(targetCollection -> {
             Collection source = (Collection) value;
             //noinspection unchecked
             targetCollection.addAll(source);
