@@ -240,5 +240,20 @@ public final class DelegatingWebsocketHandler<MessageT extends TypedWebsocketMes
         public void writeSuccess() {
             // this is expected
         }
+
+        @Override
+        public Map<String, List<String>> headers() {
+            return session.getUpgradeRequest().getHeaders();
+        }
+
+        @Override
+        public List<String> headers(String name) {
+            return session.getUpgradeRequest().getHeaders(name);
+        }
+
+        @Override
+        public Optional<String> header(String name) {
+            return Optional.ofNullable(session.getUpgradeRequest().getHeader(name));
+        }
     }
 }

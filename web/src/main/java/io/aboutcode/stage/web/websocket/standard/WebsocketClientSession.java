@@ -1,5 +1,7 @@
 package io.aboutcode.stage.web.websocket.standard;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -84,5 +86,30 @@ public interface WebsocketClientSession<MessageT extends TypedWebsocketMessage> 
      * @return An optional over the requested data
      */
     Optional<Object> removeState(String identifier);
+
+    /**
+     * Returns all available headers.
+     *
+     * @return All available headers for the session connection
+     */
+    Map<String, List<String>> headers();
+
+    /**
+     * Returns all values of the header with the given name.
+     *
+     * @param name The name of the header to return
+     *
+     * @return All valuea of the header with the specified name
+     */
+    List<String> headers(String name);
+
+    /**
+     * Returns the value of the header with the given name.
+     *
+     * @param name The name of the header to return
+     *
+     * @return Optionally, the value of the header
+     */
+    Optional<String> header(String name);
 }
 
