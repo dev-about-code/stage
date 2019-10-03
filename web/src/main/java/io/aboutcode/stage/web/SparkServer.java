@@ -5,13 +5,16 @@ import io.aboutcode.stage.dispatch.Dispatcher;
 import io.aboutcode.stage.web.web.Route;
 import io.aboutcode.stage.web.web.Session;
 import io.aboutcode.stage.web.web.WebEndpoint;
+import io.aboutcode.stage.web.web.WebsocketEndpoint;
 import io.aboutcode.stage.web.web.request.Part;
 import io.aboutcode.stage.web.web.request.RequestHandler;
 import io.aboutcode.stage.web.web.request.RequestType;
 import io.aboutcode.stage.web.web.response.InternalServerError;
 import io.aboutcode.stage.web.web.response.Ok;
 import io.aboutcode.stage.web.web.response.renderer.ResponseRenderer;
-import io.aboutcode.stage.web.websocket.DelegatingWebSocketHandler;
+import io.aboutcode.stage.web.websocket.DelegatingWebsocketHandler;
+import io.aboutcode.stage.web.websocket.WebsocketIo;
+import io.aboutcode.stage.web.websocket.standard.TypedWebsocketMessage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
@@ -47,7 +50,9 @@ final class SparkServer {
     private final String staticFilesFolder;
     private final boolean isStaticFolderExternal;
     private final Set<WebEndpoint> webEndpoints;
+    private final Set<WebsocketEndpoint> websocketEndpoints;
     private final ResponseRenderer responseRenderer;
+    private final WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
     private final Dispatcher<RequestType, ServiceRequestProcessor> SERVICE_PROCESSORS =
             Dispatcher
                     .of(RequestType.AFTER_ALL, filter(HttpMethod.after))
@@ -69,19 +74,24 @@ final class SparkServer {
      * @param isStaticFolderExternal If true, the folder is considered external and reloaded live
      * @param webEndpoints           The web endpoints this server should be processing
      * @param responseRenderer       The renderer for all responses
+     * @param websocketIo            The io controller for the websocket connection
      */
     SparkServer(int port,
                 TslConfiguration tslConfiguration,
                 String staticFilesFolder,
                 boolean isStaticFolderExternal,
                 Set<WebEndpoint> webEndpoints,
-                ResponseRenderer responseRenderer) {
+                Set<WebsocketEndpoint> websocketEndpoints,
+                ResponseRenderer responseRenderer,
+                WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
         this.port = port;
         this.tslConfiguration = tslConfiguration;
         this.staticFilesFolder = staticFilesFolder;
         this.isStaticFolderExternal = isStaticFolderExternal;
         this.webEndpoints = webEndpoints;
+        this.websocketEndpoints = websocketEndpoints;
         this.responseRenderer = responseRenderer;
+        this.websocketIo = websocketIo;
     }
 
     private static io.aboutcode.stage.web.web.request.Request request(Request rawRequest) {
@@ -203,10 +213,9 @@ final class SparkServer {
         }
 
         // set the default exception handler
-        sparkService.initExceptionHandler((e) ->
-                                                  LOGGER.error("Error in webserver : " +
-                                                               e.getMessage(),
-                                                               e));
+        sparkService.initExceptionHandler((e) -> LOGGER.error("Error in webserver: {}",
+                                                              e.getMessage(),
+                                                              e));
 
         // process static resources
         if (staticFilesFolder != null) {
@@ -217,23 +226,32 @@ final class SparkServer {
             }
         }
 
+        websocketEndpoints.forEach(websocketEndpoint -> {
+            // todo: also parse this per path to not get duplicates?
+            websocketEndpoint
+                    .getWebSocketRoutes()
+                    .forEach(route -> {
+                        DelegatingWebsocketHandler<? extends TypedWebsocketMessage> handler =
+                                new DelegatingWebsocketHandler<>(websocketIo);
+                        route.getWebSocketDataHandlers().forEach(element -> {
+                            LOGGER.debug("Adding route: {} -> {}",
+                                         route.getPath(),
+                                         element.getClass().getSimpleName());
+                            //noinspection unchecked
+                            handler.addandInitialize(element);
+                        });
+                        sparkService.webSocket(route.getPath(), handler);
+                    });
+        });
+
         //noinspection UnstableApiUsage
         List<RouteInfo> sortedRoutes = webEndpoints
                 .stream()
-                .map(webEndpoint -> {
-                    // todo: also parse this prioritized?
-                    webEndpoint
-                            .getWebSocketRoutes()
-                            .forEach(route -> sparkService.webSocket(route.getPath(),
-                                                                     new DelegatingWebSocketHandler(
-                                                                             route.getWebSocketHandler())));
-
-                    return webEndpoint
-                            .getRoutes()
-                            .stream()
-                            .map(route -> new RouteInfo(route, webEndpoint.getClass()))
-                            .collect(Collectors.toList());
-                })
+                .map(webEndpoint -> webEndpoint
+                        .getRoutes()
+                        .stream()
+                        .map(route -> new RouteInfo(route, webEndpoint.getClass()))
+                        .collect(Collectors.toList()))
                 .flatMap(Collection::stream)
                 .sorted(
                         // the amount of slashes should be the depth
@@ -272,6 +290,8 @@ final class SparkServer {
                          route.getEndpointType().getSimpleName());
             assign(sparkService, route.getRoute());
         });
+
+        sparkService.init();
     }
 
     final void stop() {

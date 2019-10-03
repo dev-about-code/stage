@@ -5,6 +5,9 @@ import io.aboutcode.stage.component.ComponentBundle;
 import io.aboutcode.stage.component.ComponentContainer;
 import io.aboutcode.stage.configuration.ApplicationConfigurationContext;
 import io.aboutcode.stage.web.web.response.renderer.ResponseRenderer;
+import io.aboutcode.stage.web.websocket.WebsocketIo;
+import io.aboutcode.stage.web.websocket.standard.TypedWebsocketMessage;
+import io.aboutcode.stage.web.websocket.standard.io.NotImplementedIo;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -19,19 +22,22 @@ public final class WebServerComponentBundleBuilder {
     private String internalStaticFolder;
     private Set<Class> validEndpoints;
     private ResponseRenderer responseRenderer;
+    private WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
 
     private WebServerComponentBundleBuilder(String prefix,
                                             Object identifier,
                                             boolean secure,
                                             String internalStaticFolder,
                                             Set<Class> validEndpoints,
-                                            ResponseRenderer responseRenderer) {
+                                            ResponseRenderer responseRenderer,
+                                            WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
         this.prefix = prefix;
         this.identifier = identifier;
         this.secure = secure;
         this.internalStaticFolder = internalStaticFolder;
         this.validEndpoints = validEndpoints;
         this.responseRenderer = responseRenderer;
+        this.websocketIo = websocketIo;
     }
 
     /**
@@ -47,7 +53,8 @@ public final class WebServerComponentBundleBuilder {
                                                    false,
                                                    null,
                                                    null,
-                                                   renderer);
+                                                   renderer,
+                                                   new NotImplementedIo<>());
     }
 
     /**
@@ -60,13 +67,13 @@ public final class WebServerComponentBundleBuilder {
             return new SSLWebComponentBundle(prefix,
                                              identifier,
                                              internalStaticFolder,
-                                             validEndpoints, responseRenderer);
+                                             validEndpoints, responseRenderer, websocketIo);
         }
 
         return new DefaultWebComponentBundle(prefix,
                                              identifier,
                                              internalStaticFolder,
-                                             validEndpoints, responseRenderer);
+                                             validEndpoints, responseRenderer, websocketIo);
     }
 
     /**
@@ -82,7 +89,7 @@ public final class WebServerComponentBundleBuilder {
                                                    identifier,
                                                    secure,
                                                    internalStaticFolder, validEndpoints,
-                                                   responseRenderer);
+                                                   responseRenderer, websocketIo);
     }
 
     /**
@@ -98,7 +105,7 @@ public final class WebServerComponentBundleBuilder {
                                                    identifier,
                                                    secure,
                                                    internalStaticFolder, validEndpoints,
-                                                   responseRenderer);
+                                                   responseRenderer, websocketIo);
     }
 
     /**
@@ -115,7 +122,7 @@ public final class WebServerComponentBundleBuilder {
                                                    identifier,
                                                    secure,
                                                    folder,
-                                                   validEndpoints, responseRenderer);
+                                                   validEndpoints, responseRenderer, websocketIo);
     }
 
     /**
@@ -130,7 +137,7 @@ public final class WebServerComponentBundleBuilder {
                                                    identifier,
                                                    true,
                                                    internalStaticFolder,
-                                                   validEndpoints, responseRenderer);
+                                                   validEndpoints, responseRenderer, websocketIo);
     }
 
     /**
@@ -149,7 +156,21 @@ public final class WebServerComponentBundleBuilder {
                                                    internalStaticFolder,
                                                    validClasses != null ? new HashSet<>(
                                                            Arrays.asList(validClasses)) : null,
-                                                   responseRenderer);
+                                                   responseRenderer,
+                                                   websocketIo);
+    }
+
+    public WebServerComponentBundleBuilder withWebsocket(
+            WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
+        return new WebServerComponentBundleBuilder(
+                prefix,
+                identifier,
+                secure,
+                internalStaticFolder,
+                validEndpoints,
+                responseRenderer,
+                websocketIo
+        );
     }
 
 
@@ -163,6 +184,7 @@ public final class WebServerComponentBundleBuilder {
         private final String internalStaticFolder;
         private final Set<Class> validEndpoints;
         private ResponseRenderer responseRenderer;
+        private WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
 
         private TslConfiguration tslConfiguration;
         private WebServerConfiguration webServerConfiguration;
@@ -171,12 +193,14 @@ public final class WebServerComponentBundleBuilder {
                                       Object identifier,
                                       String internalStaticFolder,
                                       Set<Class> validEndpoints,
-                                      ResponseRenderer responseRenderer) {
+                                      ResponseRenderer responseRenderer,
+                                      WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
             this.prefix = prefix;
             this.identifier = identifier;
             this.internalStaticFolder = internalStaticFolder;
             this.validEndpoints = validEndpoints;
             this.responseRenderer = responseRenderer;
+            this.websocketIo = websocketIo;
         }
 
         @Override
@@ -200,8 +224,8 @@ public final class WebServerComponentBundleBuilder {
                             webServerConfiguration.getExternalStaticFolder() != null,
                             tslConfiguration,
                             validEndpoints,
-                            responseRenderer
-                    ));
+                            responseRenderer,
+                            websocketIo));
         }
     }
 
@@ -214,6 +238,7 @@ public final class WebServerComponentBundleBuilder {
         private final String internalStaticFolder;
         private final Set<Class> validEndpoints;
         private ResponseRenderer responseRenderer;
+        private WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
 
         private WebServerConfiguration webServerConfiguration;
 
@@ -221,12 +246,14 @@ public final class WebServerComponentBundleBuilder {
                                           Object identifier,
                                           String internalStaticFolder,
                                           Set<Class> validEndpoints,
-                                          ResponseRenderer responseRenderer) {
+                                          ResponseRenderer responseRenderer,
+                                          WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
             this.prefix = prefix;
             this.identifier = identifier;
             this.internalStaticFolder = internalStaticFolder;
             this.validEndpoints = validEndpoints;
             this.responseRenderer = responseRenderer;
+            this.websocketIo = websocketIo;
         }
 
         @Override
@@ -245,7 +272,8 @@ public final class WebServerComponentBundleBuilder {
                     webServerConfiguration.getExternalStaticFolder() != null,
                     null,
                     validEndpoints,
-                    responseRenderer));
+                    responseRenderer,
+                    websocketIo));
         }
     }
 }
