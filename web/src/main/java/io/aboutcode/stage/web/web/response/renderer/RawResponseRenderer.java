@@ -1,18 +1,15 @@
 package io.aboutcode.stage.web.web.response.renderer;
 
-import com.google.common.net.MediaType;
 import io.aboutcode.stage.web.web.request.Request;
-import io.aboutcode.stage.web.web.response.HttpHeader;
 import io.aboutcode.stage.web.web.response.Response;
 
 /**
- * Renders the responses body using {@link Object#toString()}, setting the header to
- * <code>text/plain</code>
+ * Instances of this do not perform any transformation and simply pass the object verbatim, <em>NOT</em> setting the
+ * response's <code>Content-Type</code> header.
  */
 public final class RawResponseRenderer implements ResponseRenderer {
     @Override
-    public String render(Request request, Response response) {
-        HttpHeader.CONTENT_TYPE.set(response, MediaType.PLAIN_TEXT_UTF_8.toString());
-        return response.data() == null ? null : response.data().toString();
+    public Object render(Request request, Response response) {
+        return response.data();
     }
 }

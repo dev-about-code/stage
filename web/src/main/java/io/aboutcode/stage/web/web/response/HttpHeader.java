@@ -1,5 +1,7 @@
 package io.aboutcode.stage.web.web.response;
 
+import io.aboutcode.stage.web.web.request.Request;
+
 /**
  * All commonly used HTTP headers.
  */
@@ -20,5 +22,15 @@ public enum HttpHeader {
      */
     public void set(Response response, String value) {
         response.header(name, value);
+    }
+
+    /**
+     * Returns the requests value for the header of this type.
+     *
+     * @param request The request to retrieve the header value from
+     * @return The corresponding value or null if the header is not set
+     */
+    public String get(Request request) {
+        return request.header(name).orElse(null);
     }
 }

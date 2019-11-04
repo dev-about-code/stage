@@ -37,7 +37,7 @@ public final class MappingMediaTypeRenderer implements ResponseRenderer {
     }
 
     @Override
-    public String render(Request request, Response response) {
+    public Object render(Request request, Response response) {
         return request
                 .header(ACCEPT_TYPE_HEADER)
                 .flatMap(type -> {

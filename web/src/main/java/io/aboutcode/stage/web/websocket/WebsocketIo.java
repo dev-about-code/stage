@@ -7,7 +7,7 @@ import java.io.IOException;
  *
  * @param <MessageT> The base type of message this can handle
  */
-public interface WebSocketIo<MessageT> {
+public interface WebsocketIo<MessageT> {
     /**
      * Serializes the specified element to a string representation that can be transferred via the
      * websocket.
@@ -18,7 +18,7 @@ public interface WebSocketIo<MessageT> {
      *
      * @throws IOException Thrown if the element could not be serialized
      */
-    String serialize(Object element) throws IOException;
+    String serialize(MessageT element) throws IOException;
 
     /**
      * Deserializes the specified message into an object that can be processed by the application.
@@ -30,13 +30,4 @@ public interface WebSocketIo<MessageT> {
      * @throws IOException Thrown if the message could not be deserialized
      */
     MessageT deserialize(String message) throws IOException;
-
-    /**
-     * Registers the specified identifier to uniquely identify the specified message type.
-     *
-     * @param identifier The identifier
-     * @param type       The type represented by the identifier
-     * @param <TargetT>  Specific type
-     */
-    <TargetT extends MessageT> void registerMessageType(String identifier, Class<TargetT> type);
 }
