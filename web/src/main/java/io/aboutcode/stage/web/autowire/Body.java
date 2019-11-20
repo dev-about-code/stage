@@ -7,16 +7,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Any method annotated with this will accept GET-requests.
+ * Method parameters annotated with this will be deserialized as objects directly from the <em>full
+ * contents</em> of the body of the request.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
-@Target({ElementType.METHOD})
-public @interface GET {
-    /**
-     * Returns the path of the endpoint, relative to any {@link Path} value, if present
-     *
-     * @return The path of the endpoint
-     */
-    String value();
+@Target({ElementType.PARAMETER})
+public @interface Body {
 }

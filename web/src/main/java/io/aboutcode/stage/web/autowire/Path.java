@@ -7,16 +7,17 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Any method annotated with this will accept GET-requests.
+ * Classes annotated with this will prefix the path of every method served in the web context with
+ * the specified value.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
-@Target({ElementType.METHOD})
-public @interface GET {
+@Target({ElementType.TYPE})
+public @interface Path {
     /**
-     * Returns the path of the endpoint, relative to any {@link Path} value, if present
+     * Returns the path that every endpoint is defined relative to
      *
-     * @return The path of the endpoint
+     * @return The path that every endpoint is defined relative to
      */
     String value();
 }

@@ -7,16 +7,16 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Any method annotated with this will accept GET-requests.
+ * Method parameters annotated with this will retrieve its value from the path parameters.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
-@Target({ElementType.METHOD})
-public @interface GET {
+@Target({ElementType.PARAMETER})
+public @interface PathParameter {
     /**
-     * Returns the path of the endpoint, relative to any {@link Path} value, if present
+     * Returns the name of the path parameter to assign the value from
      *
-     * @return The path of the endpoint
+     * @return The name of the path parameter to assign the value from
      */
     String value();
 }

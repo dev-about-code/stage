@@ -6,13 +6,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * Any method annotated with this will accept GET-requests.
- */
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Target({ElementType.METHOD})
-public @interface GET {
+public @interface DELETE {
     /**
      * Returns the path of the endpoint, relative to any {@link Path} value, if present
      *

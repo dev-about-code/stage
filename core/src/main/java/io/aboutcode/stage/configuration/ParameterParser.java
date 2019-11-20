@@ -1,6 +1,8 @@
 package io.aboutcode.stage.configuration;
 
 import io.aboutcode.stage.util.FieldAnalysis;
+import io.aboutcode.stage.util.InputConverter;
+import io.aboutcode.stage.util.DefaultTypeConverters;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -112,7 +114,7 @@ public final class ParameterParser {
         InputConverter<Object> inputConverter;
         if (annotation.inputConverter() == InputConverter.class) {
             //noinspection unchecked
-            Optional<InputConverter<Object>> converter = SingleValueInputConverters
+            Optional<InputConverter<Object>> converter = DefaultTypeConverters
                     .getConverter(fieldAnalysis.getSpecificClass());
 
             // todo: unclear why orElseThrow is not working - fix
