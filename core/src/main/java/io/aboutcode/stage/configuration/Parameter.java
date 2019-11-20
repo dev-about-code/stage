@@ -1,6 +1,8 @@
 package io.aboutcode.stage.configuration;
 
 
+import io.aboutcode.stage.util.InputConverter;
+import io.aboutcode.stage.util.DefaultTypeConverters;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -38,7 +40,7 @@ public @interface Parameter {
     /**
      * The converter for the input value to the expected parameter type. By default, uses type
      * introspection to guess the correct type for a set of supported types through {@link
-     * SingleValueInputConverters}
+     * DefaultTypeConverters}
      *
      * @return The converter of the input value to the expected type of the parameter.
      */

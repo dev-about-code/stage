@@ -4,13 +4,19 @@ import io.aboutcode.stage.application.ApplicationAssemblyContext;
 import io.aboutcode.stage.component.ComponentBundle;
 import io.aboutcode.stage.component.ComponentContainer;
 import io.aboutcode.stage.configuration.ApplicationConfigurationContext;
-import io.aboutcode.stage.web.web.response.renderer.ResponseRenderer;
+import io.aboutcode.stage.web.autowire.AutowiringRequestContext;
+import io.aboutcode.stage.web.serialization.DefaultExceptionSerialization;
+import io.aboutcode.stage.web.serialization.JsonWebSerialization;
+import io.aboutcode.stage.web.serialization.WebSerialization;
+import io.aboutcode.stage.web.response.InternalServerError;
+import io.aboutcode.stage.web.response.Response;
 import io.aboutcode.stage.web.websocket.WebsocketIo;
 import io.aboutcode.stage.web.websocket.standard.TypedWebsocketMessage;
 import io.aboutcode.stage.web.websocket.standard.io.NotImplementedIo;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Component bundle for adding web server capabilities to a project.
@@ -21,40 +27,42 @@ public final class WebServerComponentBundleBuilder {
     private boolean secure;
     private String internalStaticFolder;
     private Set<Class> validEndpoints;
-    private ResponseRenderer responseRenderer;
+    private WebSerialization serialization;
     private WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
+    private Function<Exception, Response> exceptionSerialization;
 
     private WebServerComponentBundleBuilder(String prefix,
                                             Object identifier,
                                             boolean secure,
                                             String internalStaticFolder,
                                             Set<Class> validEndpoints,
-                                            ResponseRenderer responseRenderer,
-                                            WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
+                                            WebSerialization serialization,
+                                            WebsocketIo<? extends TypedWebsocketMessage> websocketIo,
+                                            Function<Exception, Response> exceptionSerialization) {
         this.prefix = prefix;
         this.identifier = identifier;
         this.secure = secure;
         this.internalStaticFolder = internalStaticFolder;
         this.validEndpoints = validEndpoints;
-        this.responseRenderer = responseRenderer;
+        this.serialization = serialization;
         this.websocketIo = websocketIo;
+        this.exceptionSerialization = exceptionSerialization;
     }
 
     /**
      * Creates a new builder.
      *
-     * @param renderer The renderer to use for this bundle
-     *
      * @return A new builder
      */
-    public static WebServerComponentBundleBuilder create(ResponseRenderer renderer) {
+    public static WebServerComponentBundleBuilder create() {
         return new WebServerComponentBundleBuilder(null,
                                                    null,
                                                    false,
                                                    null,
                                                    null,
-                                                   renderer,
-                                                   new NotImplementedIo<>());
+                                                   new JsonWebSerialization(),
+                                                   new NotImplementedIo<>(),
+                                                   new DefaultExceptionSerialization());
     }
 
     /**
@@ -63,17 +71,42 @@ public final class WebServerComponentBundleBuilder {
      * @return The created component bundle
      */
     public ComponentBundle build() {
+        AutowiringRequestContext context = new AutowiringRequestContext() {
+            @Override
+            public <T> T deserialize(String input, Class<T> type) {
+                return serialization.deserialize(input, type);
+            }
+
+            @Override
+            public String serialize(Object input) {
+                return serialization.serialize(input);
+            }
+
+            @Override
+            public Response serialize(Exception e) {
+                try {
+                    return exceptionSerialization.apply(e);
+                } catch (Exception e1) {
+                    return InternalServerError.with("Error mapping exception: " + e.getMessage());
+                }
+            }
+        };
+
         if (secure) {
             return new SSLWebComponentBundle(prefix,
                                              identifier,
                                              internalStaticFolder,
-                                             validEndpoints, responseRenderer, websocketIo);
+                                             validEndpoints,
+                                             context,
+                                             websocketIo);
         }
 
         return new DefaultWebComponentBundle(prefix,
                                              identifier,
                                              internalStaticFolder,
-                                             validEndpoints, responseRenderer, websocketIo);
+                                             validEndpoints,
+                                             context,
+                                             websocketIo);
     }
 
     /**
@@ -88,8 +121,11 @@ public final class WebServerComponentBundleBuilder {
         return new WebServerComponentBundleBuilder(prefix,
                                                    identifier,
                                                    secure,
-                                                   internalStaticFolder, validEndpoints,
-                                                   responseRenderer, websocketIo);
+                                                   internalStaticFolder,
+                                                   validEndpoints,
+                                                   serialization,
+                                                   websocketIo,
+                                                   exceptionSerialization);
     }
 
     /**
@@ -104,8 +140,11 @@ public final class WebServerComponentBundleBuilder {
         return new WebServerComponentBundleBuilder(prefix,
                                                    identifier,
                                                    secure,
-                                                   internalStaticFolder, validEndpoints,
-                                                   responseRenderer, websocketIo);
+                                                   internalStaticFolder,
+                                                   validEndpoints,
+                                                   serialization,
+                                                   websocketIo,
+                                                   exceptionSerialization);
     }
 
     /**
@@ -122,7 +161,10 @@ public final class WebServerComponentBundleBuilder {
                                                    identifier,
                                                    secure,
                                                    folder,
-                                                   validEndpoints, responseRenderer, websocketIo);
+                                                   validEndpoints,
+                                                   serialization,
+                                                   websocketIo,
+                                                   exceptionSerialization);
     }
 
     /**
@@ -137,7 +179,10 @@ public final class WebServerComponentBundleBuilder {
                                                    identifier,
                                                    true,
                                                    internalStaticFolder,
-                                                   validEndpoints, responseRenderer, websocketIo);
+                                                   validEndpoints,
+                                                   serialization,
+                                                   websocketIo,
+                                                   exceptionSerialization);
     }
 
     /**
@@ -156,10 +201,38 @@ public final class WebServerComponentBundleBuilder {
                                                    internalStaticFolder,
                                                    validClasses != null ? new HashSet<>(
                                                            Arrays.asList(validClasses)) : null,
-                                                   responseRenderer,
-                                                   websocketIo);
+                                                   serialization,
+                                                   websocketIo,
+                                                   exceptionSerialization);
     }
 
+    /**
+     * Sets the exception mapper to use for serializing exceptions raised by the endpoints.
+     *
+     * @param mapper The mapper of exception to {@link Response}
+     *
+     * @return This for fluent interface
+     */
+    public WebServerComponentBundleBuilder withExceptionMapper(
+            Function<Exception, Response> mapper) {
+        return new WebServerComponentBundleBuilder(prefix,
+                                                   identifier,
+                                                   secure,
+                                                   internalStaticFolder,
+                                                   validEndpoints,
+                                                   serialization,
+                                                   websocketIo,
+                                                   mapper);
+    }
+
+    /**
+     * When called, the created component bundle will accept websocket connections, using the
+     * specified protocol.
+     *
+     * @param websocketIo The protocol to use for websocket communication
+     *
+     * @return This for fluent interface
+     */
     public WebServerComponentBundleBuilder withWebsocket(
             WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
         return new WebServerComponentBundleBuilder(
@@ -168,9 +241,9 @@ public final class WebServerComponentBundleBuilder {
                 secure,
                 internalStaticFolder,
                 validEndpoints,
-                responseRenderer,
-                websocketIo
-        );
+                serialization,
+                websocketIo,
+                exceptionSerialization);
     }
 
 
@@ -183,7 +256,7 @@ public final class WebServerComponentBundleBuilder {
         private final Object identifier;
         private final String internalStaticFolder;
         private final Set<Class> validEndpoints;
-        private ResponseRenderer responseRenderer;
+        private AutowiringRequestContext autowiringRequestContext;
         private WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
 
         private TslConfiguration tslConfiguration;
@@ -193,13 +266,13 @@ public final class WebServerComponentBundleBuilder {
                                       Object identifier,
                                       String internalStaticFolder,
                                       Set<Class> validEndpoints,
-                                      ResponseRenderer responseRenderer,
+                                      AutowiringRequestContext autowiringRequestContext,
                                       WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
             this.prefix = prefix;
             this.identifier = identifier;
             this.internalStaticFolder = internalStaticFolder;
             this.validEndpoints = validEndpoints;
-            this.responseRenderer = responseRenderer;
+            this.autowiringRequestContext = autowiringRequestContext;
             this.websocketIo = websocketIo;
         }
 
@@ -222,9 +295,9 @@ public final class WebServerComponentBundleBuilder {
                             : webServerConfiguration
                                     .getExternalStaticFolder(),
                             webServerConfiguration.getExternalStaticFolder() != null,
+                            autowiringRequestContext,
                             tslConfiguration,
                             validEndpoints,
-                            responseRenderer,
                             websocketIo));
         }
     }
@@ -237,7 +310,7 @@ public final class WebServerComponentBundleBuilder {
         private final Object identifier;
         private final String internalStaticFolder;
         private final Set<Class> validEndpoints;
-        private ResponseRenderer responseRenderer;
+        private AutowiringRequestContext autowiringRequestContext;
         private WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
 
         private WebServerConfiguration webServerConfiguration;
@@ -246,13 +319,13 @@ public final class WebServerComponentBundleBuilder {
                                           Object identifier,
                                           String internalStaticFolder,
                                           Set<Class> validEndpoints,
-                                          ResponseRenderer responseRenderer,
+                                          AutowiringRequestContext autowiringRequestContext,
                                           WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
             this.prefix = prefix;
             this.identifier = identifier;
             this.internalStaticFolder = internalStaticFolder;
             this.validEndpoints = validEndpoints;
-            this.responseRenderer = responseRenderer;
+            this.autowiringRequestContext = autowiringRequestContext;
             this.websocketIo = websocketIo;
         }
 
@@ -270,9 +343,9 @@ public final class WebServerComponentBundleBuilder {
                                                                              : webServerConfiguration
                             .getExternalStaticFolder(),
                     webServerConfiguration.getExternalStaticFolder() != null,
+                    autowiringRequestContext,
                     null,
                     validEndpoints,
-                    responseRenderer,
                     websocketIo));
         }
     }

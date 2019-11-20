@@ -1,8 +1,10 @@
 package io.aboutcode.stage.web.websocket.standard;
 
+import io.aboutcode.stage.web.websocket.WebsocketEndpoint;
+
 /**
  * This allows a {@link WebsocketDataHandler} to interact with the context of the enclosing {@link
- * io.aboutcode.stage.web.web.WebsocketEndpoint}.
+ * WebsocketEndpoint}.
  */
 public interface WebsocketContext<MessageT extends TypedWebsocketMessage> {
     /**

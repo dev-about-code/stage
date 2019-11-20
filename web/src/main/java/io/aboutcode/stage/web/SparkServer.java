@@ -2,22 +2,17 @@ package io.aboutcode.stage.web;
 
 import com.google.common.base.CharMatcher;
 import io.aboutcode.stage.dispatch.Dispatcher;
-import io.aboutcode.stage.web.web.Route;
-import io.aboutcode.stage.web.web.Session;
-import io.aboutcode.stage.web.web.WebEndpoint;
-import io.aboutcode.stage.web.web.WebsocketEndpoint;
-import io.aboutcode.stage.web.web.request.Part;
-import io.aboutcode.stage.web.web.request.RequestHandler;
-import io.aboutcode.stage.web.web.request.RequestType;
-import io.aboutcode.stage.web.web.response.InternalServerError;
-import io.aboutcode.stage.web.web.response.Ok;
-import io.aboutcode.stage.web.web.response.renderer.ResponseRenderer;
+import io.aboutcode.stage.web.websocket.WebsocketEndpoint;
+import io.aboutcode.stage.web.request.Part;
+import io.aboutcode.stage.web.request.RequestHandler;
+import io.aboutcode.stage.web.request.RequestType;
+import io.aboutcode.stage.web.response.InternalServerError;
+import io.aboutcode.stage.web.response.Ok;
 import io.aboutcode.stage.web.websocket.DelegatingWebsocketHandler;
 import io.aboutcode.stage.web.websocket.WebsocketIo;
 import io.aboutcode.stage.web.websocket.standard.TypedWebsocketMessage;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -34,7 +29,6 @@ import spark.Request;
 import spark.Response;
 import spark.RouteImpl;
 import spark.Service;
-import spark.Spark;
 import spark.route.HttpMethod;
 
 /**
@@ -49,9 +43,8 @@ final class SparkServer {
     private final TslConfiguration tslConfiguration;
     private final String staticFilesFolder;
     private final boolean isStaticFolderExternal;
-    private final Set<WebEndpoint> webEndpoints;
+    private final List<Route> routes;
     private final Set<WebsocketEndpoint> websocketEndpoints;
-    private final ResponseRenderer responseRenderer;
     private final WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
     private final Dispatcher<RequestType, ServiceRequestProcessor> SERVICE_PROCESSORS =
             Dispatcher
@@ -68,49 +61,46 @@ final class SparkServer {
     /**
      * Creates a new component.
      *
-     * @param port                   The port to run the server on
-     * @param tslConfiguration       The (optional) ssl configuration parameters.
-     * @param staticFilesFolder      The folder to serve static files from
-     * @param isStaticFolderExternal If true, the folder is considered external and reloaded live
-     * @param webEndpoints           The web endpoints this server should be processing
-     * @param responseRenderer       The renderer for all responses
-     * @param websocketIo            The io controller for the websocket connection
+     * @param port                     The port to run the server on
+     * @param tslConfiguration         The (optional) ssl configuration parameters.
+     * @param staticFilesFolder        The folder to serve static files from
+     * @param isStaticFolderExternal   If true, the folder is considered external and reloaded live
+     * @param routes                   The routes this server should be processing
+     * @param websocketIo              The io controller for the websocket connection
      */
     SparkServer(int port,
                 TslConfiguration tslConfiguration,
                 String staticFilesFolder,
                 boolean isStaticFolderExternal,
-                Set<WebEndpoint> webEndpoints,
+                List<Route> routes,
                 Set<WebsocketEndpoint> websocketEndpoints,
-                ResponseRenderer responseRenderer,
                 WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
         this.port = port;
         this.tslConfiguration = tslConfiguration;
         this.staticFilesFolder = staticFilesFolder;
         this.isStaticFolderExternal = isStaticFolderExternal;
-        this.webEndpoints = webEndpoints;
+        this.routes = routes;
         this.websocketEndpoints = websocketEndpoints;
-        this.responseRenderer = responseRenderer;
         this.websocketIo = websocketIo;
     }
 
-    private static io.aboutcode.stage.web.web.request.Request request(Request rawRequest) {
+    private static io.aboutcode.stage.web.request.Request request(Request rawRequest) {
         return new DefaultRequest(rawRequest);
     }
 
-    private static io.aboutcode.stage.web.web.response.Response getCurrentResponse(
-            io.aboutcode.stage.web.web.request.Request request) {
-        return (io.aboutcode.stage.web.web.response.Response) request
+    private static io.aboutcode.stage.web.response.Response getCurrentResponse(
+            io.aboutcode.stage.web.request.Request request) {
+        return (io.aboutcode.stage.web.response.Response) request
                 .attribute(KEY_RESPONSE)
                 .orElse(Ok.create());
     }
 
-    private static io.aboutcode.stage.web.web.response.Response process(
-            io.aboutcode.stage.web.web.request.Request request,
+    private static io.aboutcode.stage.web.response.Response process(
+            io.aboutcode.stage.web.request.Request request,
             RequestHandler requestHandler) {
-        io.aboutcode.stage.web.web.response.Response currentResponse = getCurrentResponse(request);
+        io.aboutcode.stage.web.response.Response currentResponse = getCurrentResponse(request);
 
-        io.aboutcode.stage.web.web.response.Response response;
+        io.aboutcode.stage.web.response.Response response;
         try {
             response = requestHandler.process(request, currentResponse);
         } catch (Exception e) {
@@ -135,9 +125,9 @@ final class SparkServer {
                                   new FilterImpl(route.getPath(), "*/*") {
                                       @Override
                                       public void handle(Request rawRequest, Response rawResponse) {
-                                          io.aboutcode.stage.web.web.request.Request request = request(
+                                          io.aboutcode.stage.web.request.Request request = request(
                                                   rawRequest);
-                                          io.aboutcode.stage.web.web.response.Response response =
+                                          io.aboutcode.stage.web.response.Response response =
                                                   process(request,
                                                           route.getRequestHandler());
 
@@ -153,11 +143,11 @@ final class SparkServer {
                                      @Override
                                      public Object handle(Request rawRequest,
                                                           Response rawResponse) {
-                                         io.aboutcode.stage.web.web.request.Request request = request(
+                                         io.aboutcode.stage.web.request.Request request = request(
                                                  rawRequest);
 
                                          // has the request been finished before? Then we do not process it
-                                         io.aboutcode.stage.web.web.response.Response response = getCurrentResponse(
+                                         io.aboutcode.stage.web.response.Response response = getCurrentResponse(
                                                  request);
                                          if (!response.finished()) {
                                              // routes always finish a request
@@ -169,12 +159,9 @@ final class SparkServer {
     }
 
     private Object apply(Response rawResponse,
-                         io.aboutcode.stage.web.web.request.Request request,
-                         io.aboutcode.stage.web.web.response.Response response) {
+                         io.aboutcode.stage.web.request.Request request,
+                         io.aboutcode.stage.web.response.Response response) {
         HttpServletResponse servletResponse = rawResponse.raw();
-
-        // produce body
-        Object body = responseRenderer.render(request, response);
 
         // add headers to spark response
         response
@@ -185,7 +172,7 @@ final class SparkServer {
 
         // set status and return response
         rawResponse.status(response.status());
-        return body;
+        return response.data();
     }
 
     private void assign(Service service, Route route) {
@@ -245,19 +232,13 @@ final class SparkServer {
         });
 
         //noinspection UnstableApiUsage
-        List<RouteInfo> sortedRoutes = webEndpoints
+        List<Route> sortedRoutes = routes
                 .stream()
-                .map(webEndpoint -> webEndpoint
-                        .getRoutes()
-                        .stream()
-                        .map(route -> new RouteInfo(route, webEndpoint.getClass()))
-                        .collect(Collectors.toList()))
-                .flatMap(Collection::stream)
                 .sorted(
                         // the amount of slashes should be the depth
-                        Comparator.<RouteInfo>comparingInt(
+                        Comparator.<Route>comparingInt(
                                 element -> CharMatcher.is('/')
-                                                      .countIn(element.getRoute().getPath()))
+                                                      .countIn(element.getPath()))
                                 .reversed() // more slashes go first
                 )
                 .collect(Collectors.toList());
@@ -266,7 +247,7 @@ final class SparkServer {
         List<String> duplicatePaths = sortedRoutes
                 .stream()
                 .collect(Collectors.groupingBy(
-                        routeInfo -> string(routeInfo.getRoute()),
+                        SparkServer::string,
                         Collectors.counting()
                          )
                 )
@@ -284,11 +265,8 @@ final class SparkServer {
         }
 
         sortedRoutes.forEach(route -> {
-            LOGGER.debug("Adding route: {}:{} -> {}",
-                         route.getRoute().getType(),
-                         route.getRoute().getPath(),
-                         route.getEndpointType().getSimpleName());
-            assign(sparkService, route.getRoute());
+            LOGGER.debug("Adding route: {} -> {}", route.getType(), route.getPath());
+            assign(sparkService, route);
         });
 
         sparkService.init();
@@ -306,7 +284,7 @@ final class SparkServer {
         void process(Service service, Route route);
     }
 
-    private static class DefaultRequest implements io.aboutcode.stage.web.web.request.Request {
+    private static class DefaultRequest implements io.aboutcode.stage.web.request.Request {
         private final Request rawRequest;
 
         private DefaultRequest(Request rawRequest) {
@@ -402,24 +380,6 @@ final class SparkServer {
             } catch (ServletException e) {
                 throw new IOException(e);
             }
-        }
-    }
-
-    private static class RouteInfo {
-        private Route route;
-        private Class endpointType;
-
-        private RouteInfo(Route route, Class endpointType) {
-            this.route = route;
-            this.endpointType = endpointType;
-        }
-
-        private Route getRoute() {
-            return route;
-        }
-
-        private Class getEndpointType() {
-            return endpointType;
         }
     }
 
