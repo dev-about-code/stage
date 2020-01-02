@@ -101,11 +101,12 @@ public class VersionRangeTest {
         assertTrue(range.overlaps(range(null, "4.4.4")));
         assertTrue(range.overlaps(range("1.1.1", "4.4.4")));
 
-        assertTrue(range.overlaps(range("1.1.1", "2.3.4")));
+        assertFalse(range.overlaps(range("1.1.1", "2.3.4")));
+        assertFalse(range.overlaps(range("3.4.5", "4.4.4")));
+
         assertTrue(range.overlaps(range("1.1.1", "2.3.5")));
         assertTrue(range.overlaps(range("1.1.1", "3.4.4")));
         assertTrue(range.overlaps(range("2.3.5", "4.4.4")));
-        assertFalse(range.overlaps(range("3.4.5", "4.4.4")));
         assertTrue(range.overlaps(range("3.4.4", "4.4.4")));
 
         assertTrue(range.overlaps(range("2.4.0", "3.4.0")));

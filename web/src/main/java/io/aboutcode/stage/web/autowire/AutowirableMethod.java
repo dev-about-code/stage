@@ -277,6 +277,15 @@ final class AutowirableMethod {
     }
 
     /**
+     * Returns the target method to be invoked on the target object for this method.
+     *
+     * @return The target method to be invoked on the target object
+     */
+    Method getTargetMethod() {
+        return method;
+    }
+
+    /**
      * Executes the method in the context of the specified request.
      *
      * @param request The request to execute the method for

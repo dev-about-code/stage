@@ -2,6 +2,7 @@ package io.aboutcode.stage.web.autowire.versioning;
 
 import com.google.common.base.Preconditions;
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -133,5 +134,24 @@ public final class Version implements Comparable<Version> {
     @Override
     public String toString() {
         return String.format("%s.%s.%s", getMajor(), getMinor(), getPatch());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final Version version = (Version) o;
+        return major == version.major &&
+               minor == version.minor &&
+               patch == version.patch;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(major, minor, patch);
     }
 }

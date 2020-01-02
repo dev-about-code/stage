@@ -1,5 +1,7 @@
 package io.aboutcode.stage.web.autowire.versioning;
 
+import java.util.Objects;
+
 /**
  * Instances of this represent a range of versions with an (optional) start and (optional) end
  * version.
@@ -85,6 +87,7 @@ public final class VersionRange {
      * @return True if the ranges overlap either at the start, end or both; false otherwise.
      */
     public boolean overlaps(VersionRange versionRange) {
-        return !(start.isAfter(versionRange.end)) && (end == END || end.isAfter(versionRange.start));
+        return !(start.isAfter(versionRange.end) || Objects.equals(start, versionRange.end)) &&
+               !(end.isBefore(versionRange.start) || Objects.equals(end, versionRange.start));
     }
 }

@@ -27,7 +27,7 @@ import java.util.stream.Stream;
  * conversion of (return) types and exception handling in a generic manner.
  */
 public final class WebRequestHandlerParser {
-    private static final String VERSION_PATH_PARAMETER = "VERSION_PATH";
+    private static final String VERSION_PATH_PARAMETER = ":VERSION_PATH";
     private static final String DEFAULT_PATH = "/";
     private final Set<AuthorizationRealm> availableAuthorizationRealms;
     private final AutowiringRequestContext context;
@@ -133,8 +133,10 @@ public final class WebRequestHandlerParser {
                     current.getVersionRange().overlaps(method.getVersionRange())) {
                     throw new AutowiringException(
                             String.format(
-                                    "Endpoint version for method '%s' overlaps with endpoint version for method '%s'",
+                                    "Endpoint version for method '%s' on '%s' overlaps with endpoint version for method '%s' on '%s' ",
+                                    current.getTargetMethod().getName(),
                                     current.getTargetObjectType().getSimpleName(),
+                                    method.getTargetMethod().getName(),
                                     method.getTargetObjectType().getSimpleName())
                     );
                 }

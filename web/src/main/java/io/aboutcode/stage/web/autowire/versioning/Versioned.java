@@ -12,7 +12,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
-@Target({ElementType.PARAMETER})
+@Target({ElementType.METHOD})
 public @interface Versioned {
     /**
      * Returns the version at which this endpoint was introduced. If null, this endpoint was
@@ -21,7 +21,7 @@ public @interface Versioned {
      * @return A version string of the format <code>\d+\.\d+\.\d+</code>. No other format is
      * accepted.
      */
-    String introduced();
+    String introduced() default "";
 
     /**
      * Returns the version at which this endpoint was deprecated. If null, this endpoint has not
@@ -30,5 +30,5 @@ public @interface Versioned {
      * @return A version string of the format <code>\d+\.\d+\.\d+</code>. No other format is
      * accepted.
      */
-    String deprecated();
+    String deprecated() default "";
 }
