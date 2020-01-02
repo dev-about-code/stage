@@ -2,7 +2,7 @@ package io.aboutcode.stage.web.autowire;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -73,9 +73,10 @@ public class AutowirableMethodTest {
 
     @Test
     public void testOne() {
-        AutowirableMethod method = autowirableMethod(new TestClass(), "one");
+        Optional<AutowirableMethod> method = autowirableMethod(new TestClass(), "one");
         assertNotNull(method);
-        Response response = method.invokeFromRequest(request, context);
+        assertTrue(method.isPresent());
+        Response response = method.get().invokeFromRequest(request, context);
         assertNotNull(response);
         assertEquals(200, response.status());
         assertNotNull(response.data());
@@ -83,9 +84,10 @@ public class AutowirableMethodTest {
 
     @Test
     public void testTwo() {
-        AutowirableMethod method = autowirableMethod(new TestClass(), "two");
+        Optional<AutowirableMethod> method = autowirableMethod(new TestClass(), "two");
         assertNotNull(method);
-        Response response = method.invokeFromRequest(request, context);
+        assertTrue(method.isPresent());
+        Response response = method.get().invokeFromRequest(request, context);
         assertNotNull(response);
         assertEquals(200, response.status());
         assertEquals(json(TEST_STRING), response.data());
@@ -98,9 +100,10 @@ public class AutowirableMethodTest {
 
     @Test
     public void testFour() {
-        AutowirableMethod method = autowirableMethod(new TestClass(), "four");
+        Optional<AutowirableMethod> method = autowirableMethod(new TestClass(), "four");
         assertNotNull(method);
-        Response response = method.invokeFromRequest(request, context);
+        assertTrue(method.isPresent());
+        Response response = method.get().invokeFromRequest(request, context);
         assertNotNull(response);
         assertEquals(200, response.status());
         assertEquals(json(PATH), response.data());
@@ -108,9 +111,10 @@ public class AutowirableMethodTest {
 
     @Test
     public void testFive() {
-        AutowirableMethod method = autowirableMethod(new TestClass(), "five");
+        Optional<AutowirableMethod> method = autowirableMethod(new TestClass(), "five");
         assertNotNull(method);
-        Response response = method.invokeFromRequest(request, context);
+        assertTrue(method.isPresent());
+        Response response = method.get().invokeFromRequest(request, context);
         assertNotNull(response);
         assertEquals(200, response.status());
         assertEquals(json(PATH_PARAM), response.data());
@@ -118,9 +122,10 @@ public class AutowirableMethodTest {
 
     @Test
     public void testSix() {
-        AutowirableMethod method = autowirableMethod(new TestClass(), "six");
+        Optional<AutowirableMethod> method = autowirableMethod(new TestClass(), "six");
         assertNotNull(method);
-        Response response = method.invokeFromRequest(request, context);
+        assertTrue(method.isPresent());
+        Response response = method.get().invokeFromRequest(request, context);
         assertNotNull(response);
         assertEquals(200, response.status());
         assertEquals(json(QUERY_PARAM), response.data());
@@ -128,9 +133,10 @@ public class AutowirableMethodTest {
 
     @Test
     public void testSeven() {
-        AutowirableMethod method = autowirableMethod(new TestClass(), "seven");
+        Optional<AutowirableMethod> method = autowirableMethod(new TestClass(), "seven");
         assertNotNull(method);
-        Response response = method.invokeFromRequest(request, context);
+        assertTrue(method.isPresent());
+        Response response = method.get().invokeFromRequest(request, context);
         assertNotNull(response);
         assertEquals(200, response.status());
         assertEquals(json(BODY), response.data());
@@ -138,9 +144,10 @@ public class AutowirableMethodTest {
 
     @Test
     public void testEight() {
-        AutowirableMethod method = autowirableMethod(new TestClass(), "eight");
+        Optional<AutowirableMethod> method = autowirableMethod(new TestClass(), "eight");
         assertNotNull(method);
-        Response response = method.invokeFromRequest(request, context);
+        assertTrue(method.isPresent());
+        Response response = method.get().invokeFromRequest(request, context);
         assertNotNull(response);
         assertEquals(501, response.status());
         assertEquals(ERROR, response.data());
@@ -151,9 +158,10 @@ public class AutowirableMethodTest {
         defaultAuthorizationRealm = new RestrictiveAuthorizationRealm();
         availableAuthorizationRealms.add(defaultAuthorizationRealm);
 
-        AutowirableMethod method = autowirableMethod(new UnauthorizedClass(), "one");
+        Optional<AutowirableMethod> method = autowirableMethod(new UnauthorizedClass(), "one");
         assertNotNull(method);
-        Response response = method.invokeFromRequest(request, context);
+        assertTrue(method.isPresent());
+        Response response = method.get().invokeFromRequest(request, context);
         assertNotNull(response);
         assertEquals(403, response.status());
     }
@@ -163,9 +171,10 @@ public class AutowirableMethodTest {
         defaultAuthorizationRealm = new RestrictiveAuthorizationRealm();
         availableAuthorizationRealms.add(defaultAuthorizationRealm);
 
-        AutowirableMethod method = autowirableMethod(new UnauthorizedClass(), "two");
+        Optional<AutowirableMethod> method = autowirableMethod(new UnauthorizedClass(), "two");
         assertNotNull(method);
-        Response response = method.invokeFromRequest(request, context);
+        assertTrue(method.isPresent());
+        Response response = method.get().invokeFromRequest(request, context);
         assertNotNull(response);
         assertEquals(200, response.status());
     }
@@ -175,14 +184,15 @@ public class AutowirableMethodTest {
         defaultAuthorizationRealm = new RestrictiveAuthorizationRealm();
         availableAuthorizationRealms.add(defaultAuthorizationRealm);
 
-        AutowirableMethod method = autowirableMethod(new UnauthorizedClass(), "three");
+        Optional<AutowirableMethod> method = autowirableMethod(new UnauthorizedClass(), "three");
         assertNotNull(method);
-        Response response = method.invokeFromRequest(request, context);
+        assertTrue(method.isPresent());
+        Response response = method.get().invokeFromRequest(request, context);
         assertNotNull(response);
         assertEquals(200, response.status());
     }
 
-    private AutowirableMethod autowirableMethod(Object instance, String methodName) {
+    private Optional<AutowirableMethod> autowirableMethod(Object instance, String methodName) {
         final Map<String, Method> methodNameToMethod = Stream.of(instance.getClass().getMethods())
                                                              .collect(Collectors.toMap(
                                                                      Method::getName,
@@ -194,6 +204,10 @@ public class AutowirableMethodTest {
                       availableAuthorizationRealms);
     }
 
+    private String json(String input) {
+        return context.serialize(input);
+    }
+
     private static class DummyAuthorizationRealm implements AuthorizationRealm {
         @Override
         public boolean isAuthorized(Request request) {
@@ -201,41 +215,44 @@ public class AutowirableMethodTest {
         }
     }
 
-    private String json(String input) {
-        return context.serialize(input);
-    }
-
     @SuppressWarnings("unused")
     private static class TestClass {
-
+        @GET("/")
         public void one() {
 
         }
 
+        @GET("/")
         public String two() {
             return TEST_STRING;
         }
 
+        @GET("/")
         public String three(String input) {
             return input;
         }
 
+        @GET("/")
         public String four(Request request) {
             return request.path();
         }
 
+        @GET("/")
         public String five(@PathParameter("input") String input) {
             return input;
         }
 
+        @GET("/")
         public String six(@QueryParameter("input") String input) {
             return input;
         }
 
+        @GET("/")
         public String seven(@Body String input) {
             return input;
         }
 
+        @GET("/")
         public String eight() {
             throw new UnsupportedOperationException(ERROR);
         }
@@ -243,15 +260,18 @@ public class AutowirableMethodTest {
 
     @SuppressWarnings("unused")
     private static class UnauthorizedClass {
+        @GET("/")
         public void one() {
 
         }
 
+        @GET("/")
         @Authorized(PermissiveAuthorizationRealm.class)
         public void two() {
 
         }
 
+        @GET("/")
         @Unauthorized
         public void three() {
 

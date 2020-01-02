@@ -12,9 +12,9 @@ import java.util.stream.Stream;
  * the implementation can be changed without having to change the client code.</p>
  */
 public final class Route {
+    private final RequestType type;
     private final String path;
     private final RequestHandler requestHandler;
-    private final RequestType type;
 
     private Route(RequestType type, String path, RequestHandler requestHandler) {
         this.type = type;
@@ -40,6 +40,8 @@ public final class Route {
      * @param requestHandler The requeshandler to invoke
      *
      * @return The created route
+     *
+     * @deprecated This type will be deprecated soon
      */
     public static Route before(String path, RequestHandler requestHandler) {
         return new Route(RequestType.BEFORE_ALL, path, requestHandler);
@@ -51,6 +53,8 @@ public final class Route {
      * @param requestHandler The requeshandler to invoke
      *
      * @return The created route
+     *
+     * @deprecated This type will be deprecated soon
      */
     public static Route before(RequestHandler requestHandler) {
         return new Route(RequestType.BEFORE_ALL, null, requestHandler);
@@ -63,6 +67,8 @@ public final class Route {
      * @param requestHandler The requeshandler to invoke
      *
      * @return The created route
+     *
+     * @deprecated This type will be deprecated soon
      */
     public static Route after(String path, RequestHandler requestHandler) {
         return new Route(RequestType.AFTER_ALL, path, requestHandler);
@@ -74,6 +80,8 @@ public final class Route {
      * @param requestHandler The requeshandler to invoke
      *
      * @return The created route
+     *
+     * @deprecated This type will be deprecated soon
      */
     public static Route after(RequestHandler requestHandler) {
         return new Route(RequestType.AFTER_ALL, null, requestHandler);

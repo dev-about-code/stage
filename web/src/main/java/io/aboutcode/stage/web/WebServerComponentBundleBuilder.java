@@ -5,11 +5,11 @@ import io.aboutcode.stage.component.ComponentBundle;
 import io.aboutcode.stage.component.ComponentContainer;
 import io.aboutcode.stage.configuration.ApplicationConfigurationContext;
 import io.aboutcode.stage.web.autowire.AutowiringRequestContext;
+import io.aboutcode.stage.web.response.InternalServerError;
+import io.aboutcode.stage.web.response.Response;
 import io.aboutcode.stage.web.serialization.DefaultExceptionSerialization;
 import io.aboutcode.stage.web.serialization.JsonWebSerialization;
 import io.aboutcode.stage.web.serialization.WebSerialization;
-import io.aboutcode.stage.web.response.InternalServerError;
-import io.aboutcode.stage.web.response.Response;
 import io.aboutcode.stage.web.websocket.WebsocketIo;
 import io.aboutcode.stage.web.websocket.standard.TypedWebsocketMessage;
 import io.aboutcode.stage.web.websocket.standard.io.NotImplementedIo;
@@ -22,6 +22,7 @@ import java.util.function.Function;
  * Component bundle for adding web server capabilities to a project.
  */
 public final class WebServerComponentBundleBuilder {
+    private String rootPath;
     private String prefix;
     private Object identifier;
     private boolean secure;
@@ -31,7 +32,8 @@ public final class WebServerComponentBundleBuilder {
     private WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
     private Function<Exception, Response> exceptionSerialization;
 
-    private WebServerComponentBundleBuilder(String prefix,
+    private WebServerComponentBundleBuilder(String rootPath,
+                                            String prefix,
                                             Object identifier,
                                             boolean secure,
                                             String internalStaticFolder,
@@ -39,6 +41,7 @@ public final class WebServerComponentBundleBuilder {
                                             WebSerialization serialization,
                                             WebsocketIo<? extends TypedWebsocketMessage> websocketIo,
                                             Function<Exception, Response> exceptionSerialization) {
+        this.rootPath = rootPath;
         this.prefix = prefix;
         this.identifier = identifier;
         this.secure = secure;
@@ -56,6 +59,7 @@ public final class WebServerComponentBundleBuilder {
      */
     public static WebServerComponentBundleBuilder create() {
         return new WebServerComponentBundleBuilder(null,
+                                                   null,
                                                    null,
                                                    false,
                                                    null,
@@ -93,7 +97,7 @@ public final class WebServerComponentBundleBuilder {
         };
 
         if (secure) {
-            return new SSLWebComponentBundle(prefix,
+            return new SSLWebComponentBundle(rootPath, prefix,
                                              identifier,
                                              internalStaticFolder,
                                              validEndpoints,
@@ -101,7 +105,7 @@ public final class WebServerComponentBundleBuilder {
                                              websocketIo);
         }
 
-        return new DefaultWebComponentBundle(prefix,
+        return new DefaultWebComponentBundle(rootPath, prefix,
                                              identifier,
                                              internalStaticFolder,
                                              validEndpoints,
@@ -118,7 +122,8 @@ public final class WebServerComponentBundleBuilder {
      * @return This for fluent interface
      */
     public WebServerComponentBundleBuilder withPrefix(String prefix) {
-        return new WebServerComponentBundleBuilder(prefix,
+        return new WebServerComponentBundleBuilder(rootPath,
+                                                   prefix,
                                                    identifier,
                                                    secure,
                                                    internalStaticFolder,
@@ -137,7 +142,8 @@ public final class WebServerComponentBundleBuilder {
      * @return This for fluent interface
      */
     public WebServerComponentBundleBuilder withIdentifier(Object identifier) {
-        return new WebServerComponentBundleBuilder(prefix,
+        return new WebServerComponentBundleBuilder(rootPath,
+                                                   prefix,
                                                    identifier,
                                                    secure,
                                                    internalStaticFolder,
@@ -157,10 +163,30 @@ public final class WebServerComponentBundleBuilder {
      * @return This for fluent interface
      */
     public WebServerComponentBundleBuilder withInternalStaticFolder(String folder) {
-        return new WebServerComponentBundleBuilder(prefix,
+        return new WebServerComponentBundleBuilder(rootPath,
+                                                   prefix,
                                                    identifier,
                                                    secure,
                                                    folder,
+                                                   validEndpoints,
+                                                   serialization,
+                                                   websocketIo,
+                                                   exceptionSerialization);
+    }
+
+    /**
+     * Registers the specified path as root path for all endpoints.
+     *
+     * @param path The root path which will be used as base for all endpoints
+     *
+     * @return This for fluent interface
+     */
+    public WebServerComponentBundleBuilder withRootPath(String path) {
+        return new WebServerComponentBundleBuilder(path,
+                                                   prefix,
+                                                   identifier,
+                                                   secure,
+                                                   internalStaticFolder,
                                                    validEndpoints,
                                                    serialization,
                                                    websocketIo,
@@ -175,7 +201,8 @@ public final class WebServerComponentBundleBuilder {
      * @return This for fluent interface
      */
     public WebServerComponentBundleBuilder secure() {
-        return new WebServerComponentBundleBuilder(prefix,
+        return new WebServerComponentBundleBuilder(rootPath,
+                                                   prefix,
                                                    identifier,
                                                    true,
                                                    internalStaticFolder,
@@ -195,7 +222,8 @@ public final class WebServerComponentBundleBuilder {
      * @return This for fluent interface
      */
     public WebServerComponentBundleBuilder withValidEndpointClasses(Class... validClasses) {
-        return new WebServerComponentBundleBuilder(prefix,
+        return new WebServerComponentBundleBuilder(rootPath,
+                                                   prefix,
                                                    identifier,
                                                    secure,
                                                    internalStaticFolder,
@@ -215,7 +243,8 @@ public final class WebServerComponentBundleBuilder {
      */
     public WebServerComponentBundleBuilder withExceptionMapper(
             Function<Exception, Response> mapper) {
-        return new WebServerComponentBundleBuilder(prefix,
+        return new WebServerComponentBundleBuilder(rootPath,
+                                                   prefix,
                                                    identifier,
                                                    secure,
                                                    internalStaticFolder,
@@ -236,6 +265,7 @@ public final class WebServerComponentBundleBuilder {
     public WebServerComponentBundleBuilder withWebsocket(
             WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
         return new WebServerComponentBundleBuilder(
+                rootPath,
                 prefix,
                 identifier,
                 secure,
@@ -251,7 +281,7 @@ public final class WebServerComponentBundleBuilder {
      * A component bundle for a secure web component
      */
     private static class SSLWebComponentBundle implements ComponentBundle {
-
+        private final String rootPath;
         private final String prefix;
         private final Object identifier;
         private final String internalStaticFolder;
@@ -262,12 +292,13 @@ public final class WebServerComponentBundleBuilder {
         private TslConfiguration tslConfiguration;
         private WebServerConfiguration webServerConfiguration;
 
-        private SSLWebComponentBundle(String prefix,
+        private SSLWebComponentBundle(String rootPath, String prefix,
                                       Object identifier,
                                       String internalStaticFolder,
                                       Set<Class> validEndpoints,
                                       AutowiringRequestContext autowiringRequestContext,
                                       WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
+            this.rootPath = rootPath;
             this.prefix = prefix;
             this.identifier = identifier;
             this.internalStaticFolder = internalStaticFolder;
@@ -289,6 +320,7 @@ public final class WebServerComponentBundleBuilder {
             context.addComponent(
                     identifier,
                     new WebServerComponent(
+                            rootPath,
                             webServerConfiguration.getPort(),
                             webServerConfiguration.getExternalStaticFolder() == null
                             ? internalStaticFolder
@@ -306,6 +338,7 @@ public final class WebServerComponentBundleBuilder {
      * A component bundle for the default web component
      */
     private static class DefaultWebComponentBundle implements ComponentBundle {
+        private final String rootPath;
         private final String prefix;
         private final Object identifier;
         private final String internalStaticFolder;
@@ -315,12 +348,13 @@ public final class WebServerComponentBundleBuilder {
 
         private WebServerConfiguration webServerConfiguration;
 
-        private DefaultWebComponentBundle(String prefix,
+        private DefaultWebComponentBundle(String rootPath, String prefix,
                                           Object identifier,
                                           String internalStaticFolder,
                                           Set<Class> validEndpoints,
                                           AutowiringRequestContext autowiringRequestContext,
                                           WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
+            this.rootPath = rootPath;
             this.prefix = prefix;
             this.identifier = identifier;
             this.internalStaticFolder = internalStaticFolder;
@@ -338,6 +372,7 @@ public final class WebServerComponentBundleBuilder {
         @Override
         public void assemble(ApplicationAssemblyContext context) {
             context.addComponent(identifier, new WebServerComponent(
+                    rootPath,
                     webServerConfiguration.getPort(),
                     webServerConfiguration.getExternalStaticFolder() == null ? internalStaticFolder
                                                                              : webServerConfiguration

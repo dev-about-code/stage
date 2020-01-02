@@ -30,6 +30,8 @@ public class WebRequestHandlerParserTest {
     private Request request;
     private Response currentResponse;
     private WebRequestHandlerParser parser;
+    private Set<AuthorizationRealm> availableAuthorizationRealms;
+    private AutowiringRequestContext context;
 
     private static Route get(String path, List<Route> routes) {
         return routes.stream()
@@ -42,12 +44,13 @@ public class WebRequestHandlerParserTest {
     @Before
     public void setUp() {
         AuthorizationRealm defaultAuthorizationRealm = new PermissiveAuthorizationRealm();
-        Set<AuthorizationRealm> availableAuthorizationRealms = Stream
+        availableAuthorizationRealms = Stream
                 .of(defaultAuthorizationRealm, new DummyAuthorizationRealm())
                 .collect(Collectors.toSet());
-        AutowiringRequestContext context = new AutowiringRequestContext() {
+        context = new AutowiringRequestContext() {
             @Override
             public <T> T deserialize(String input, Class<T> type) {
+                //noinspection unchecked
                 return (T) input;
             }
 
@@ -65,12 +68,14 @@ public class WebRequestHandlerParserTest {
         parser = new WebRequestHandlerParser(availableAuthorizationRealms, context);
         request = mock(Request.class);
         currentResponse = mock(Response.class);
+
+        when(request.pathParam("VERSION_PATH")).thenReturn(Optional.empty());
     }
 
     @Test
     public void pathPlusMethodTest() throws Exception {
         TestHandler target = new TestHandler();
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(7, routes.size());
 
         Route route = get("/test/zero", routes);
@@ -138,6 +143,22 @@ public class WebRequestHandlerParserTest {
     }
 
     @Test
+    public void rootPathTest() throws Exception {
+        parser = new WebRequestHandlerParser(availableAuthorizationRealms, context);
+
+        List<Route> routes = parser.parse("root", set(new DummyHandler()));
+        assertEquals(1, routes.size());
+
+        Route route = get("/root/one", routes);
+        assertEquals(RequestType.GET, route.getType());
+        Response response = route.getRequestHandler().process(request, currentResponse);
+        assertEquals(200, response.status());
+        Object data = response.data();
+        assertNotNull(data);
+        assertEquals("OK", data);
+    }
+
+    @Test
     public void nonPublic() throws Exception {
         WebRequestHandler target = new WebRequestHandler() {
             @GET("/nonpublic")
@@ -155,7 +176,7 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(0, routes.size());
     }
 
@@ -169,7 +190,7 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
@@ -193,7 +214,7 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
@@ -217,7 +238,7 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
@@ -241,7 +262,7 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
@@ -265,7 +286,7 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
@@ -288,7 +309,7 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        parser.parse(target);
+        parser.parse(null, set(target));
     }
 
     @Test
@@ -301,7 +322,7 @@ public class WebRequestHandlerParserTest {
                 return Ok.with(request.path());
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         when(request.path()).thenReturn(path);
@@ -350,7 +371,7 @@ public class WebRequestHandlerParserTest {
                 return input.stringInput;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         Route route = get("/object", routes);
@@ -428,5 +449,16 @@ public class WebRequestHandlerParserTest {
         public String six(@QueryParameter("input") String input) {
             return input;
         }
+    }
+
+    private static class DummyHandler implements WebRequestHandler {
+        @GET("one")
+        public void one() {
+
+        }
+    }
+    
+    private static <T> Set<T> set(T object) {
+        return Stream.of(object).collect(Collectors.toSet());
     }
 }
