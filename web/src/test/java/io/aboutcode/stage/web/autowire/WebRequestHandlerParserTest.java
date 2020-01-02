@@ -11,6 +11,7 @@ import io.aboutcode.stage.web.autowire.auth.AuthorizationRealm;
 import io.aboutcode.stage.web.autowire.auth.PermissiveAuthorizationRealm;
 import io.aboutcode.stage.web.autowire.exception.AutowiringException;
 import io.aboutcode.stage.web.Route;
+import io.aboutcode.stage.web.autowire.versioning.Versioned;
 import io.aboutcode.stage.web.request.Request;
 import io.aboutcode.stage.web.request.RequestType;
 import io.aboutcode.stage.web.response.InternalServerError;
@@ -30,6 +31,8 @@ public class WebRequestHandlerParserTest {
     private Request request;
     private Response currentResponse;
     private WebRequestHandlerParser parser;
+    private Set<AuthorizationRealm> availableAuthorizationRealms;
+    private AutowiringRequestContext context;
 
     private static Route get(String path, List<Route> routes) {
         return routes.stream()
@@ -42,12 +45,13 @@ public class WebRequestHandlerParserTest {
     @Before
     public void setUp() {
         AuthorizationRealm defaultAuthorizationRealm = new PermissiveAuthorizationRealm();
-        Set<AuthorizationRealm> availableAuthorizationRealms = Stream
+        availableAuthorizationRealms = Stream
                 .of(defaultAuthorizationRealm, new DummyAuthorizationRealm())
                 .collect(Collectors.toSet());
-        AutowiringRequestContext context = new AutowiringRequestContext() {
+        context = new AutowiringRequestContext() {
             @Override
             public <T> T deserialize(String input, Class<T> type) {
+                //noinspection unchecked
                 return (T) input;
             }
 
@@ -65,12 +69,14 @@ public class WebRequestHandlerParserTest {
         parser = new WebRequestHandlerParser(availableAuthorizationRealms, context);
         request = mock(Request.class);
         currentResponse = mock(Response.class);
+
+        when(request.pathParam(":VERSION_PATH")).thenReturn(Optional.empty());
     }
 
     @Test
     public void pathPlusMethodTest() throws Exception {
         TestHandler target = new TestHandler();
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(7, routes.size());
 
         Route route = get("/test/zero", routes);
@@ -138,6 +144,22 @@ public class WebRequestHandlerParserTest {
     }
 
     @Test
+    public void rootPathTest() throws Exception {
+        parser = new WebRequestHandlerParser(availableAuthorizationRealms, context);
+
+        List<Route> routes = parser.parse("root", set(new DummyHandler()));
+        assertEquals(1, routes.size());
+
+        Route route = get("/root/one", routes);
+        assertEquals(RequestType.GET, route.getType());
+        Response response = route.getRequestHandler().process(request, currentResponse);
+        assertEquals(200, response.status());
+        Object data = response.data();
+        assertNotNull(data);
+        assertEquals("OK", data);
+    }
+
+    @Test
     public void nonPublic() throws Exception {
         WebRequestHandler target = new WebRequestHandler() {
             @GET("/nonpublic")
@@ -155,8 +177,87 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(0, routes.size());
+    }
+
+    @Test
+    public void testBaseVersioning() throws Exception {
+        WebRequestHandler target = new BaseVersionHandler();
+        List<Route> routes = parser.parse(null, set(target));
+        assertEquals(5, routes.size());
+
+        Route route = get("/none", routes);
+        Response response = route.getRequestHandler().process(request, currentResponse);
+        assertEquals(200, response.status());
+        Object data = response.data();
+        assertNotNull(data);
+        assertEquals("OK", data);
+
+        when(request.pathParam(":VERSION_PATH")).thenReturn(Optional.of("1.2.1"));
+        route = get("/:VERSION_PATH/open", routes);
+        response = route.getRequestHandler().process(request, currentResponse);
+        assertEquals(200, response.status());
+        data = response.data();
+        assertNotNull(data);
+        assertEquals("OK", data);
+
+        route = get("/:VERSION_PATH/start", routes);
+        response = route.getRequestHandler().process(request, currentResponse);
+        assertEquals(200, response.status());
+        data = response.data();
+        assertNotNull(data);
+        assertEquals("OK", data);
+
+        route = get("/:VERSION_PATH/end", routes);
+        response = route.getRequestHandler().process(request, currentResponse);
+        assertEquals(200, response.status());
+        data = response.data();
+        assertNotNull(data);
+        assertEquals("OK", data);
+
+        route = get("/:VERSION_PATH/closed", routes);
+        response = route.getRequestHandler().process(request, currentResponse);
+        assertEquals(200, response.status());
+        data = response.data();
+        assertNotNull(data);
+        assertEquals("OK", data);
+    }
+
+    @Test(expected = AutowiringException.class)
+    public void testVersioningOverlap() throws Exception {
+        WebRequestHandler target = new VersioningOverlapHandler();
+        List<Route> routes = parser.parse(null, set(target));
+    }
+
+    @Test
+    public void testVersioning() throws Exception {
+        WebRequestHandler target = new VersioningHandler();
+        List<Route> routes = parser.parse(null, set(target));
+        assertEquals(1, routes.size());
+
+        Route route = get("/:VERSION_PATH/two", routes);
+
+        when(request.pathParam(":VERSION_PATH")).thenReturn(Optional.of("3.4.5"));
+        Response response = route.getRequestHandler().process(request, currentResponse);
+        assertEquals(200, response.status());
+        Object data = response.data();
+        assertNotNull(data);
+        assertEquals("twoNewer", data);
+
+        when(request.pathParam(":VERSION_PATH")).thenReturn(Optional.of("2.3.4"));
+        response = route.getRequestHandler().process(request, currentResponse);
+        assertEquals(200, response.status());
+        data = response.data();
+        assertNotNull(data);
+        assertEquals("twoNew", data);
+
+        when(request.pathParam(":VERSION_PATH")).thenReturn(Optional.of("1.2.3"));
+        response = route.getRequestHandler().process(request, currentResponse);
+        assertEquals(200, response.status());
+        data = response.data();
+        assertNotNull(data);
+        assertEquals("two", data);
     }
 
     @Test
@@ -169,7 +270,7 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
@@ -193,7 +294,7 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
@@ -217,7 +318,7 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
@@ -241,7 +342,7 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
@@ -265,7 +366,7 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
@@ -288,7 +389,7 @@ public class WebRequestHandlerParserTest {
                 return input;
             }
         };
-        parser.parse(target);
+        parser.parse(null, set(target));
     }
 
     @Test
@@ -301,7 +402,7 @@ public class WebRequestHandlerParserTest {
                 return Ok.with(request.path());
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         when(request.path()).thenReturn(path);
@@ -350,7 +451,7 @@ public class WebRequestHandlerParserTest {
                 return input.stringInput;
             }
         };
-        List<Route> routes = parser.parse(target);
+        List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
         Route route = get("/object", routes);
@@ -428,5 +529,71 @@ public class WebRequestHandlerParserTest {
         public String six(@QueryParameter("input") String input) {
             return input;
         }
+    }
+
+    private static class DummyHandler implements WebRequestHandler {
+        @GET("one")
+        public void one() {
+
+        }
+    }
+
+    private static class BaseVersionHandler implements WebRequestHandler {
+        @GET("none")
+        public void none() {}
+
+        @GET("open")
+        @Versioned
+        public void open() {}
+
+        @GET("start")
+        @Versioned(introduced = "1.1.1")
+        public void start() {}
+
+        @GET("end")
+        @Versioned(deprecated = "2.2.2")
+        public void end() {}
+
+        @GET("closed")
+        @Versioned(introduced = "1.1.1", deprecated = "2.2.2")
+        public void closed() {}
+    }
+
+    private static class VersioningOverlapHandler implements WebRequestHandler {
+        @GET("one")
+        @Versioned
+        public String one() {
+            return "one";
+        }
+
+        @GET("one")
+        @Versioned(introduced = "1.1.1")
+        public String oneNew() {
+            return "oneNew";
+        }
+    }
+
+    private static class VersioningHandler implements WebRequestHandler {
+        @GET("two")
+        @Versioned(introduced = "1.1.1", deprecated = "2.2.2")
+        public String two() {
+            return "two";
+        }
+
+        @GET("two")
+        @Versioned(introduced = "2.2.2", deprecated = "3.3.3")
+        public String twoNew() {
+            return "twoNew";
+        }
+
+        @GET("two")
+        @Versioned(introduced = "3.3.3")
+        public String twoNewer() {
+            return "twoNewer";
+        }
+    }
+    
+    private static <T> Set<T> set(T object) {
+        return Stream.of(object).collect(Collectors.toSet());
     }
 }

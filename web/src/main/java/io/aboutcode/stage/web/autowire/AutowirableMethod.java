@@ -8,6 +8,9 @@ import io.aboutcode.stage.web.autowire.auth.PermissiveAuthorizationRealm;
 import io.aboutcode.stage.web.autowire.auth.Unauthorized;
 import io.aboutcode.stage.web.autowire.exception.AutowiringException;
 import io.aboutcode.stage.web.autowire.exception.IllegalAutowireValueException;
+import io.aboutcode.stage.web.autowire.versioning.Version;
+import io.aboutcode.stage.web.autowire.versioning.VersionRange;
+import io.aboutcode.stage.web.autowire.versioning.Versioned;
 import io.aboutcode.stage.web.request.Request;
 import io.aboutcode.stage.web.response.NotAuthorized;
 import io.aboutcode.stage.web.response.NotFound;
@@ -33,19 +36,25 @@ import org.slf4j.LoggerFactory;
  */
 final class AutowirableMethod {
     private static final Logger logger = LoggerFactory.getLogger(AutowirableMethod.class);
+    private final AccessType accessType;
     private final Object targetObject;
     private final Method method;
+    private final VersionRange versionRange;
     private final List<AutowiredParameter> parameters;
     private final boolean raw;
     private final AuthorizationRealm authorizationRealm;
 
-    private AutowirableMethod(Object targetObject,
+    private AutowirableMethod(AccessType accessType,
+                              Object targetObject,
                               Method method,
                               List<AutowiredParameter> parameters,
                               boolean raw,
+                              VersionRange versionRange,
                               AuthorizationRealm authorizationRealm) {
+        this.accessType = accessType;
         this.targetObject = targetObject;
         this.method = method;
+        this.versionRange = versionRange;
         this.method.setAccessible(true);
         this.parameters = parameters;
         this.raw = raw;
@@ -53,7 +62,8 @@ final class AutowirableMethod {
     }
 
     /**
-     * Creates an {@link AutowirableMethod} from the specified parameters.
+     * Creates an {@link AutowirableMethod} from the specified parameters if the method is annotated
+     * properly with an {@link AccessType} annotation.
      *
      * @param targetObject                 The object that the method should be executed on when the
      *                                     {@link AutowirableMethod} is called
@@ -62,25 +72,53 @@ final class AutowirableMethod {
      *                                     its own realm. Must not be null
      * @param availableAuthorizationRealms All available authorization realms
      *
-     * @return The {@link AutowirableMethod} that can be invoked for a web request
+     * @return Optionally, the {@link AutowirableMethod} that can be invoked for a web request
      */
-    static AutowirableMethod from(Object targetObject, Method method,
-                                  AuthorizationRealm defaultAuthorizationRealm,
-                                  Set<AuthorizationRealm> availableAuthorizationRealms) {
-        Class<?> returnType = method.getReturnType();
-        List<AutowiredParameter> parameters = Stream.of(method.getParameters())
-                                                    .map(element -> parameter(method, element))
-                                                    .collect(Collectors.toList());
+    static Optional<AutowirableMethod> from(Object targetObject,
+                                            Method method,
+                                            AuthorizationRealm defaultAuthorizationRealm,
+                                            Set<AuthorizationRealm> availableAuthorizationRealms) {
+        return AccessType.parse(method)
+                         .map(accessType -> {
+                             Class<?> returnType = method.getReturnType();
+                             List<AutowiredParameter> parameters = Stream.of(method.getParameters())
+                                                                         .map(element -> parameter(
+                                                                                 method, element))
+                                                                         .collect(Collectors
+                                                                                          .toList());
 
-        Annotation[] methodAnnotations = method.getDeclaredAnnotations();
-        boolean isRaw = isRaw(methodAnnotations, method, returnType);
+                             Annotation[] methodAnnotations = method.getDeclaredAnnotations();
+                             boolean isRaw = isRaw(methodAnnotations, method, returnType);
 
-        AuthorizationRealm authorizationRealm = determineAuthorizationRealm(method,
-                                                                            methodAnnotations,
-                                                                            defaultAuthorizationRealm,
-                                                                            availableAuthorizationRealms);
+                             VersionRange versionRange = versionRange(methodAnnotations);
 
-        return new AutowirableMethod(targetObject, method, parameters, isRaw, authorizationRealm);
+                             AuthorizationRealm authorizationRealm = determineAuthorizationRealm(
+                                     method,
+                                     methodAnnotations,
+                                     defaultAuthorizationRealm,
+                                     availableAuthorizationRealms);
+
+                             return new AutowirableMethod(accessType,
+                                                          targetObject,
+                                                          method,
+                                                          parameters,
+                                                          isRaw,
+                                                          versionRange,
+                                                          authorizationRealm);
+                         });
+    }
+
+    private static VersionRange versionRange(Annotation[] methodAnnotations) {
+        return Stream.of(methodAnnotations)
+                     .filter(annotation -> Objects
+                             .equals(annotation.annotationType(), Versioned.class))
+                     .findFirst()
+                     .map(Versioned.class::cast)
+                     .map(versioned -> VersionRange.between(
+                             Version.from(versioned.introduced()).orElse(null),
+                             Version.from(versioned.deprecated()).orElse(null)
+                     ))
+                     .orElse(null);
     }
 
     private static AuthorizationRealm determineAuthorizationRealm(Method method,
@@ -151,7 +189,6 @@ final class AutowirableMethod {
         }
 
         return raw.isPresent();
-
     }
 
     private static AutowiredParameter parameter(Method method, Parameter parameter) {
@@ -200,6 +237,52 @@ final class AutowirableMethod {
 
     private static boolean isAutowireAnnotation(Annotation annotation) {
         return ParameterAnnotationType.isMatching(annotation.annotationType());
+    }
+
+    /**
+     * Returns the access type of this method.
+     *
+     * @return The access type of this method
+     */
+    AccessType getAccessType() {
+        return accessType;
+    }
+
+    /**
+     * Returns the version range this method is supported in.
+     *
+     * @return The version range this method is supported in
+     */
+    VersionRange getVersionRange() {
+        return versionRange;
+    }
+
+    /**
+     * Returns the path this method is configured to be exposed at. Note that this is relative to
+     * any paths configured globally and/or on the containing class.
+     *
+     * @return The configured path
+     */
+    String getPath() {
+        return accessType.path(method);
+    }
+
+    /**
+     * Returns the type of the target object for this method.
+     *
+     * @return The type of the target object
+     */
+    Class getTargetObjectType() {
+        return targetObject.getClass();
+    }
+
+    /**
+     * Returns the target method to be invoked on the target object for this method.
+     *
+     * @return The target method to be invoked on the target object
+     */
+    Method getTargetMethod() {
+        return method;
     }
 
     /**
