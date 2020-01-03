@@ -12,7 +12,6 @@ import io.aboutcode.stage.web.response.NotFound;
 import io.aboutcode.stage.web.response.Response;
 import io.aboutcode.stage.web.util.Paths;
 import java.lang.reflect.Method;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -64,10 +63,12 @@ public final class WebRequestHandlerParser {
 
     }
 
-    private Optional<AutowirableMethod> parseMethod(WebRequestHandler handler,
+    private Optional<AutowirableMethod> parseMethod(String basePath,
+                                                    WebRequestHandler handler,
                                                     Method method,
                                                     AuthorizationRealm defaultAuthorizationRealm) {
-        return AutowirableMethod.from(handler,
+        return AutowirableMethod.from(basePath,
+                                      handler,
                                       method,
                                       defaultAuthorizationRealm,
                                       availableAuthorizationRealms);
@@ -103,25 +104,23 @@ public final class WebRequestHandlerParser {
         }
 
         return handlers.stream()
-                       .map(handler -> {
+                       .flatMap(handler -> {
                            String basePath = getBasePath(handler);
                            AuthorizationRealm classAuthorizationRealm = getAuthorizationRealm(
                                    handler,
                                    availableAuthorizationRealms);
 
                            return Stream.of(handler.getClass().getMethods())
-                                        .map(method -> parseMethod(handler, method,
+                                        .map(method -> parseMethod(basePath, handler, method,
                                                                    classAuthorizationRealm))
                                         .filter(Optional::isPresent)
-                                        .map(Optional::get)
-                                        .collect(Collectors.groupingBy(
-                                                getEndpointIdentifier(path, basePath)))
-                                        .entrySet()
-                                        .stream()
-                                        .map(entry -> asRoute(entry.getKey(), entry.getValue()))
-                                        .collect(Collectors.toList());
+                                        .map(Optional::get);
                        })
-                       .flatMap(Collection::stream)
+                       .collect(Collectors.groupingBy(
+                               getEndpointIdentifier(path)))
+                       .entrySet()
+                       .stream()
+                       .map(entry -> asRoute(entry.getKey(), entry.getValue()))
                        .collect(Collectors.toList());
     }
 
@@ -148,15 +147,14 @@ public final class WebRequestHandlerParser {
         return endpointIdentifier.accessType.route(endpointIdentifier.path, requestHandler);
     }
 
-    private Function<AutowirableMethod, EndpointIdentifier> getEndpointIdentifier(String rootPath,
-                                                                                  String basePath) {
+    private Function<AutowirableMethod, EndpointIdentifier> getEndpointIdentifier(String rootPath) {
         return method -> new EndpointIdentifier(method.getAccessType(),
-                                                getPath(method, rootPath, basePath));
+                                                getPath(method, rootPath));
     }
 
-    private String getPath(AutowirableMethod method, String rootPath, String basePath) {
+    private String getPath(AutowirableMethod method, String rootPath) {
         String versionPath = method.getVersionRange() == null ? "" : VERSION_PATH_PARAMETER;
-        return Paths.concat(rootPath, basePath, versionPath, method.getPath()).orElse(DEFAULT_PATH);
+        return Paths.concat(rootPath, versionPath, method.getPath()).orElse(DEFAULT_PATH);
     }
 
     private static class EndpointIdentifier {

@@ -261,6 +261,30 @@ public class WebRequestHandlerParserTest {
     }
 
     @Test
+    public void testVersioningAccessType() throws Exception {
+        WebRequestHandler target = new VersioningAccessTypeHandler();
+        List<Route> routes = parser.parse(null, set(target));
+        assertEquals(2, routes.size());
+    }
+
+    @Test
+    public void testVersioningMultiFile() throws Exception {
+        WebRequestHandler targetOne = new VersioningOneHandler();
+        WebRequestHandler targetTwo = new VersioningTwoHandler();
+        List<Route> routes = parser.parse(null, set(targetOne, targetTwo));
+        assertEquals(1, routes.size());
+
+        Route route = get("/:VERSION_PATH/one", routes);
+
+        when(request.pathParam(":VERSION_PATH")).thenReturn(Optional.of("2.3.4"));
+        Response response = route.getRequestHandler().process(request, currentResponse);
+        assertEquals(200, response.status());
+        Object data = response.data();
+        assertNotNull(data);
+        assertEquals("oneNew", data);
+    }
+
+    @Test
     public void post() throws Exception {
         final String path = "post";
         final String result = "data";
@@ -573,6 +597,36 @@ public class WebRequestHandlerParserTest {
         }
     }
 
+    private static class VersioningAccessTypeHandler implements WebRequestHandler {
+        @GET("one")
+        @Versioned(introduced = "1.1.1")
+        public String one() {
+            return "one";
+        }
+
+        @POST("one")
+        @Versioned(introduced = "1.1.1")
+        public String oneNew() {
+            return "oneNew";
+        }
+    }
+
+    private static class VersioningOneHandler implements WebRequestHandler {
+        @GET("one")
+        @Versioned(introduced = "1.1.1", deprecated = "2.2.2")
+        public String one() {
+            return "one";
+        }
+    }
+
+    private static class VersioningTwoHandler implements WebRequestHandler {
+        @GET("one")
+        @Versioned(introduced = "2.2.2", deprecated = "3.3.3")
+        public String one() {
+            return "oneNew";
+        }
+    }
+
     private static class VersioningHandler implements WebRequestHandler {
         @GET("two")
         @Versioned(introduced = "1.1.1", deprecated = "2.2.2")
@@ -593,7 +647,7 @@ public class WebRequestHandlerParserTest {
         }
     }
     
-    private static <T> Set<T> set(T object) {
+    private static <T> Set<T> set(T ... object) {
         return Stream.of(object).collect(Collectors.toSet());
     }
 }

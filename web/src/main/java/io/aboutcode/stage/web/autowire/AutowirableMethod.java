@@ -16,6 +16,7 @@ import io.aboutcode.stage.web.response.NotAuthorized;
 import io.aboutcode.stage.web.response.NotFound;
 import io.aboutcode.stage.web.response.Ok;
 import io.aboutcode.stage.web.response.Response;
+import io.aboutcode.stage.web.util.Paths;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -36,6 +37,7 @@ import org.slf4j.LoggerFactory;
  */
 final class AutowirableMethod {
     private static final Logger logger = LoggerFactory.getLogger(AutowirableMethod.class);
+    private final String basePath;
     private final AccessType accessType;
     private final Object targetObject;
     private final Method method;
@@ -44,13 +46,14 @@ final class AutowirableMethod {
     private final boolean raw;
     private final AuthorizationRealm authorizationRealm;
 
-    private AutowirableMethod(AccessType accessType,
+    private AutowirableMethod(String basePath, AccessType accessType,
                               Object targetObject,
                               Method method,
                               List<AutowiredParameter> parameters,
                               boolean raw,
                               VersionRange versionRange,
                               AuthorizationRealm authorizationRealm) {
+        this.basePath = basePath;
         this.accessType = accessType;
         this.targetObject = targetObject;
         this.method = method;
@@ -65,6 +68,8 @@ final class AutowirableMethod {
      * Creates an {@link AutowirableMethod} from the specified parameters if the method is annotated
      * properly with an {@link AccessType} annotation.
      *
+     * @param basePath                     The path that the path of this method is relative to;
+     *                                     usually the path specified on class-level
      * @param targetObject                 The object that the method should be executed on when the
      *                                     {@link AutowirableMethod} is called
      * @param method                       The method that should be invoked on the target object
@@ -74,7 +79,8 @@ final class AutowirableMethod {
      *
      * @return Optionally, the {@link AutowirableMethod} that can be invoked for a web request
      */
-    static Optional<AutowirableMethod> from(Object targetObject,
+    static Optional<AutowirableMethod> from(String basePath,
+                                            Object targetObject,
                                             Method method,
                                             AuthorizationRealm defaultAuthorizationRealm,
                                             Set<AuthorizationRealm> availableAuthorizationRealms) {
@@ -98,7 +104,8 @@ final class AutowirableMethod {
                                      defaultAuthorizationRealm,
                                      availableAuthorizationRealms);
 
-                             return new AutowirableMethod(accessType,
+                             return new AutowirableMethod(basePath,
+                                                          accessType,
                                                           targetObject,
                                                           method,
                                                           parameters,
@@ -264,7 +271,7 @@ final class AutowirableMethod {
      * @return The configured path
      */
     String getPath() {
-        return accessType.path(method);
+        return Paths.concat(basePath, accessType.path(method)).orElse("/");
     }
 
     /**
