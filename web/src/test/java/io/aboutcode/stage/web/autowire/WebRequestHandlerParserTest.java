@@ -646,7 +646,7 @@ public class WebRequestHandlerParserTest {
             return "twoNewer";
         }
     }
-  
+    
     private static <T> Set<T> set(T ... object) {
         return Stream.of(object).collect(Collectors.toSet());
     }
