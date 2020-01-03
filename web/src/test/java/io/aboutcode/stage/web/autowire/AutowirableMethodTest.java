@@ -200,7 +200,7 @@ public class AutowirableMethodTest {
                                                                      (current, next) -> current
                                                              ));
         return AutowirableMethod
-                .from(instance, methodNameToMethod.get(methodName), defaultAuthorizationRealm,
+                .from(null, instance, methodNameToMethod.get(methodName), defaultAuthorizationRealm,
                       availableAuthorizationRealms);
     }
 
