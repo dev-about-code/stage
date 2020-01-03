@@ -10,11 +10,9 @@ import io.aboutcode.stage.web.autowire.auth.AuthorizationRealm;
 import io.aboutcode.stage.web.websocket.WebsocketEndpoint;
 import io.aboutcode.stage.web.websocket.WebsocketIo;
 import io.aboutcode.stage.web.websocket.standard.TypedWebsocketMessage;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * <p>This implements a standard web server component that registers both websocket- and
@@ -24,6 +22,7 @@ import java.util.stream.Collectors;
  * are present, the server will still start up but will not serve any routes.</p>
  */
 final class WebServerComponent extends BaseComponent {
+    private final String rootPath;
     private final int port;
     private final String staticFilesFolder;
     private final boolean isStaticFolderExternal;
@@ -36,22 +35,26 @@ final class WebServerComponent extends BaseComponent {
 
     /**
      * Creates a new component.
-     *  @param port                   The port on which to listen for connections.
-     * @param staticFilesFolder      The folder to expose static files from
-     * @param isStaticFolderExternal If true, the static files are reloaded live
+     *
+     * @param rootPath                 The root path of all endpoints
+     * @param port                     The port on which to listen for connections.
+     * @param staticFilesFolder        The folder to expose static files from
+     * @param isStaticFolderExternal   If true, the static files are reloaded live
      * @param autowiringRequestContext The object that allows access to the applications context
-     * @param tslConfiguration       The (optional) ssl configuration to use
-     * @param validEndpoints         If not null, the endpoints this server should use. All other
- *                               types of endpoints are ignored
-     * @param websocketIo            The io controller for the websocket connection
+     * @param tslConfiguration         The (optional) ssl configuration to use
+     * @param validEndpoints           If not null, the endpoints this server should use. All other
+     *                                 types of endpoints are ignored
+     * @param websocketIo              The io controller for the websocket connection
      */
-    WebServerComponent(int port,
+    WebServerComponent(String rootPath,
+                       int port,
                        String staticFilesFolder,
                        boolean isStaticFolderExternal,
                        AutowiringRequestContext autowiringRequestContext,
                        TslConfiguration tslConfiguration,
                        Set<Class> validEndpoints,
                        WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
+        this.rootPath = rootPath;
         this.port = port;
         this.staticFilesFolder = staticFilesFolder;
         this.isStaticFolderExternal = isStaticFolderExternal;
@@ -125,10 +128,6 @@ final class WebServerComponent extends BaseComponent {
                 autowiringRequestContext
         );
 
-        return webRequestHandlers
-                .stream()
-                .map(parser::parse)
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
+        return parser.parse(rootPath, webRequestHandlers);
     }
 }
