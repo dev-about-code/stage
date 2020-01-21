@@ -16,6 +16,7 @@ import io.aboutcode.stage.web.autowire.exception.AutowiringException;
 import io.aboutcode.stage.web.request.Request;
 import io.aboutcode.stage.web.response.InternalServerError;
 import io.aboutcode.stage.web.response.Response;
+import io.aboutcode.stage.web.serialization.ContentTypeException;
 import io.aboutcode.stage.web.serialization.JsonWebSerialization;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -57,6 +58,12 @@ public class AutowirableMethodTest {
             @Override
             public String serialize(Object input) {
                 return jsonConverter.serialize(input);
+            }
+
+            @Override
+            public void setContentType(Request request, Response response)
+                    throws ContentTypeException {
+                jsonConverter.setContentType(request, response);
             }
 
             @Override

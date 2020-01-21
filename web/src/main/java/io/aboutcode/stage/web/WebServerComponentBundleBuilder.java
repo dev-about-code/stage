@@ -5,8 +5,10 @@ import io.aboutcode.stage.component.ComponentBundle;
 import io.aboutcode.stage.component.ComponentContainer;
 import io.aboutcode.stage.configuration.ApplicationConfigurationContext;
 import io.aboutcode.stage.web.autowire.AutowiringRequestContext;
+import io.aboutcode.stage.web.request.Request;
 import io.aboutcode.stage.web.response.InternalServerError;
 import io.aboutcode.stage.web.response.Response;
+import io.aboutcode.stage.web.serialization.ContentTypeException;
 import io.aboutcode.stage.web.serialization.DefaultExceptionSerialization;
 import io.aboutcode.stage.web.serialization.JsonWebSerialization;
 import io.aboutcode.stage.web.serialization.WebSerialization;
@@ -84,6 +86,12 @@ public final class WebServerComponentBundleBuilder {
             @Override
             public String serialize(Object input) {
                 return serialization.serialize(input);
+            }
+
+            @Override
+            public void setContentType(Request request, Response response)
+                    throws ContentTypeException {
+                serialization.setContentType(request, response);
             }
 
             @Override
