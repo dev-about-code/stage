@@ -7,16 +7,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.gson.annotations.SerializedName;
+import io.aboutcode.stage.web.Route;
 import io.aboutcode.stage.web.autowire.auth.AuthorizationRealm;
 import io.aboutcode.stage.web.autowire.auth.PermissiveAuthorizationRealm;
 import io.aboutcode.stage.web.autowire.exception.AutowiringException;
-import io.aboutcode.stage.web.Route;
 import io.aboutcode.stage.web.autowire.versioning.Versioned;
 import io.aboutcode.stage.web.request.Request;
 import io.aboutcode.stage.web.request.RequestType;
 import io.aboutcode.stage.web.response.InternalServerError;
 import io.aboutcode.stage.web.response.Ok;
 import io.aboutcode.stage.web.response.Response;
+import io.aboutcode.stage.web.serialization.ContentTypeException;
 import io.aboutcode.stage.web.serialization.JsonWebSerialization;
 import java.util.List;
 import java.util.Objects;
@@ -42,6 +43,10 @@ public class WebRequestHandlerParserTest {
                              "Could not find route for path: " + path));
     }
 
+    private static <T> Set<T> set(T... object) {
+        return Stream.of(object).collect(Collectors.toSet());
+    }
+
     @Before
     public void setUp() {
         AuthorizationRealm defaultAuthorizationRealm = new PermissiveAuthorizationRealm();
@@ -58,6 +63,10 @@ public class WebRequestHandlerParserTest {
             @Override
             public String serialize(Object input) {
                 return input.toString();
+            }
+
+            @Override
+            public void setContentType(Request request, Response response) {
             }
 
             @Override
@@ -459,6 +468,12 @@ public class WebRequestHandlerParserTest {
             public Response serialize(Exception e) {
                 return InternalServerError.with(e.getMessage());
             }
+
+            @Override
+            public void setContentType(Request request, Response response)
+                    throws ContentTypeException {
+                jsonConverter.setContentType(request, response);
+            }
         };
         TestInput input = new TestInput(
                 "SUPER",
@@ -645,9 +660,5 @@ public class WebRequestHandlerParserTest {
         public String twoNewer() {
             return "twoNewer";
         }
-    }
-    
-    private static <T> Set<T> set(T ... object) {
-        return Stream.of(object).collect(Collectors.toSet());
     }
 }

@@ -1,6 +1,8 @@
 package io.aboutcode.stage.web.autowire;
 
+import io.aboutcode.stage.web.request.Request;
 import io.aboutcode.stage.web.response.Response;
+import io.aboutcode.stage.web.serialization.ContentTypeException;
 
 /**
  * Implementation provide callbacks into the web context to provide generic functionality to the
@@ -30,6 +32,16 @@ public interface AutowiringRequestContext {
      * @return The string representation of the specified object
      */
     String serialize(Object input);
+
+    /**
+     * Sets the correct content type on the provided response for the provided request.
+     *
+     * @param request  The request to set the content type for
+     * @param response The response to set the content type on
+     *
+     * @throws ContentTypeException Thrown if the content type could not be set for some reason
+     */
+    void setContentType(Request request, Response response) throws ContentTypeException;
 
     /**
      * Transforms the specified exception into a response that can be returned to the client

@@ -16,6 +16,7 @@ import io.aboutcode.stage.web.response.NotAuthorized;
 import io.aboutcode.stage.web.response.NotFound;
 import io.aboutcode.stage.web.response.Ok;
 import io.aboutcode.stage.web.response.Response;
+import io.aboutcode.stage.web.serialization.ContentTypeException;
 import io.aboutcode.stage.web.util.Paths;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
@@ -333,7 +334,16 @@ final class AutowirableMethod {
             return Ok.create();
         }
 
-        return Ok.with(context.serialize(result));
+        Response response = Ok.with(context.serialize(result));
+        try {
+            context.setContentType(request, response);
+        } catch (ContentTypeException e) {
+            logger.error("Could not set content type for response of method {}: {}", method,
+                         e.getMessage(), e);
+            return context.serialize(e);
+        }
+
+        return response;
     }
 
     @SuppressWarnings("unused")
