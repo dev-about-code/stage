@@ -263,6 +263,25 @@ public final class WebServerComponentBundleBuilder {
     }
 
     /**
+     * Sets the serializer to use for serializing objects returned by the endpoints.
+     *
+     * @param serialization The converter of {@link Response}s to string results
+     *
+     * @return This for fluent interface
+     */
+    public WebServerComponentBundleBuilder withSerialization(WebSerialization serialization) {
+        return new WebServerComponentBundleBuilder(rootPath,
+                                                   prefix,
+                                                   identifier,
+                                                   secure,
+                                                   internalStaticFolder,
+                                                   validEndpoints,
+                                                   serialization,
+                                                   websocketIo,
+                                                   exceptionSerialization);
+    }
+
+    /**
      * When called, the created component bundle will accept websocket connections, using the
      * specified protocol.
      *

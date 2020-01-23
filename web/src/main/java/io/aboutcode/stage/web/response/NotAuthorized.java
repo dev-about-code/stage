@@ -14,7 +14,7 @@ public final class NotAuthorized extends DefaultResponse {
      * @return The created instance
      */
     public static Response create() {
-        return new NotAuthorized(null);
+        return with("Request is not authorized");
     }
 
     /**

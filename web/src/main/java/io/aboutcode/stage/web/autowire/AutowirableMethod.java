@@ -312,8 +312,7 @@ final class AutowirableMethod {
             result = method.invoke(targetObject,
                                    parameters.stream()
                                              .map(parameter -> parameter
-                                                     .retrieveFrom(request, context))
-                                             .toArray()
+                                                     .retrieveFrom(request, context)).toArray()
             );
         } catch (IllegalAccessException e) {
             logger.error("No access for endpoint method {}: {}", method, e.getMessage(), e);
