@@ -1,14 +1,15 @@
 package io.aboutcode.stage.web;
 
 import com.google.common.base.CharMatcher;
+import com.google.common.base.Splitter;
 import io.aboutcode.stage.dispatch.Dispatcher;
-import io.aboutcode.stage.web.websocket.WebsocketEndpoint;
 import io.aboutcode.stage.web.request.Part;
 import io.aboutcode.stage.web.request.RequestHandler;
 import io.aboutcode.stage.web.request.RequestType;
 import io.aboutcode.stage.web.response.InternalServerError;
 import io.aboutcode.stage.web.response.Ok;
 import io.aboutcode.stage.web.websocket.DelegatingWebsocketHandler;
+import io.aboutcode.stage.web.websocket.WebsocketEndpoint;
 import io.aboutcode.stage.web.websocket.WebsocketIo;
 import io.aboutcode.stage.web.websocket.standard.TypedWebsocketMessage;
 import java.io.IOException;
@@ -39,6 +40,7 @@ final class SparkServer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SparkServer.class);
     private static final String KEY_RESPONSE = "-RESPONSE-";
+    private static final String KEY_ACCEPT_TYPE = "Accept";
     private final int port;
     private final TslConfiguration tslConfiguration;
     private final String staticFilesFolder;
@@ -61,12 +63,12 @@ final class SparkServer {
     /**
      * Creates a new component.
      *
-     * @param port                     The port to run the server on
-     * @param tslConfiguration         The (optional) ssl configuration parameters.
-     * @param staticFilesFolder        The folder to serve static files from
-     * @param isStaticFolderExternal   If true, the folder is considered external and reloaded live
-     * @param routes                   The routes this server should be processing
-     * @param websocketIo              The io controller for the websocket connection
+     * @param port                   The port to run the server on
+     * @param tslConfiguration       The (optional) ssl configuration parameters.
+     * @param staticFilesFolder      The folder to serve static files from
+     * @param isStaticFolderExternal If true, the folder is considered external and reloaded live
+     * @param routes                 The routes this server should be processing
+     * @param websocketIo            The io controller for the websocket connection
      */
     SparkServer(int port,
                 TslConfiguration tslConfiguration,
@@ -163,26 +165,38 @@ final class SparkServer {
                          io.aboutcode.stage.web.response.Response response) {
         HttpServletResponse servletResponse = rawResponse.raw();
 
+        // if content-type is not set on response, set to requested content-type
+        request.header(KEY_ACCEPT_TYPE)
+               .map(this::contentTypes)
+               .flatMap(types -> types.stream().findFirst())
+               .ifPresent(response::contentType);
+
         // add headers to spark response
-        response
-                .headers()
+        response.headers()
                 .forEach(servletResponse::setHeader);
 
         request.attribute(KEY_RESPONSE, response);
 
         // set status and return response
         rawResponse.status(response.status());
-        return response.data();
+        // returning empty string as to not trigger a 404 in the Spark framework
+        return Optional.ofNullable(response.data()).orElse("");
+    }
+
+    private Set<String> contentTypes(String contentTypes) {
+        //noinspection UnstableApiUsage
+        return Splitter.on(',')
+                       .trimResults()
+                       .withKeyValueSeparator(';')
+                       .split(contentTypes)
+                       .keySet();
     }
 
     private void assign(Service service, Route route) {
         SERVICE_PROCESSORS
                 .dispatch(route.getType())
-                .orElseThrow(() ->
-                                     new IllegalArgumentException(
-                                             String.format("Type %s cannot be processed",
-                                                           route.getType()
-                                                                .name())))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        String.format("Type %s cannot be processed", route.getType().name())))
                 .process(service, route);
     }
 
