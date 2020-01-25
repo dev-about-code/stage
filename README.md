@@ -7,6 +7,14 @@ However, removing boilerplating or letting you write code as fast as possible is
 Instead, it allows you to focus on proper separation of concerns and helps you to keep you code-base 
 structured and readable. This makes it the ideal candidate for applications that are expected to grow.
 
+## Releases
+### `3.0.5`
+- Allows default values for `@QueryParameter` annotations
+- `@QueryParameter` fields can also be enums now
+- Empty values for non-mandatory parameters work now
+- `Accept` header parsing is working for simple headers now
+- `NonAuthorized` is now thrown as a `UnauthorizedException` and can hence be transformed to a custom response 
+
 ## Architecture
 All functional units in Stage are called `Components`: small, self-contained pieces of code that provide 
 very clearly defined functionality. `Components` have a lifecycle and can interact with other `Components` 
