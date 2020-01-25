@@ -1,13 +1,13 @@
 package io.aboutcode.stage.web;
 
 import com.google.common.base.CharMatcher;
-import com.google.common.base.Splitter;
 import io.aboutcode.stage.dispatch.Dispatcher;
 import io.aboutcode.stage.web.request.Part;
 import io.aboutcode.stage.web.request.RequestHandler;
 import io.aboutcode.stage.web.request.RequestType;
 import io.aboutcode.stage.web.response.InternalServerError;
 import io.aboutcode.stage.web.response.Ok;
+import io.aboutcode.stage.web.util.HeaderAccess;
 import io.aboutcode.stage.web.websocket.DelegatingWebsocketHandler;
 import io.aboutcode.stage.web.websocket.WebsocketEndpoint;
 import io.aboutcode.stage.web.websocket.WebsocketIo;
@@ -167,7 +167,7 @@ final class SparkServer {
 
         // if content-type is not set on response, set to requested content-type
         request.header(KEY_ACCEPT_TYPE)
-               .map(this::contentTypes)
+               .map(HeaderAccess::acceptHeader)
                .flatMap(types -> types.stream().findFirst())
                .ifPresent(response::contentType);
 
@@ -181,15 +181,6 @@ final class SparkServer {
         rawResponse.status(response.status());
         // returning empty string as to not trigger a 404 in the Spark framework
         return Optional.ofNullable(response.data()).orElse("");
-    }
-
-    private Set<String> contentTypes(String contentTypes) {
-        //noinspection UnstableApiUsage
-        return Splitter.on(',')
-                       .trimResults()
-                       .withKeyValueSeparator(';')
-                       .split(contentTypes)
-                       .keySet();
     }
 
     private void assign(Service service, Route route) {

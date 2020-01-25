@@ -17,6 +17,7 @@ import io.aboutcode.stage.web.request.Request;
 import io.aboutcode.stage.web.response.InternalServerError;
 import io.aboutcode.stage.web.response.Response;
 import io.aboutcode.stage.web.serialization.ContentTypeException;
+import io.aboutcode.stage.web.serialization.DefaultExceptionSerialization;
 import io.aboutcode.stage.web.serialization.JsonWebSerialization;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -49,6 +50,7 @@ public class AutowirableMethodTest {
                 .collect(Collectors.toSet());
         context = new AutowiringRequestContext() {
             private final JsonWebSerialization jsonConverter = new JsonWebSerialization();
+            private final DefaultExceptionSerialization exceptionSerialization = new DefaultExceptionSerialization();
 
             @Override
             public <T> T deserialize(String input, Class<T> type) {
@@ -68,7 +70,7 @@ public class AutowirableMethodTest {
 
             @Override
             public Response serialize(Exception e) {
-                return InternalServerError.with(e.getMessage());
+                return exceptionSerialization.apply(e);
             }
         };
         request = mock(Request.class);
@@ -158,6 +160,18 @@ public class AutowirableMethodTest {
         assertNotNull(response);
         assertEquals(501, response.status());
         assertEquals(ERROR, response.data());
+    }
+
+    @Test
+    public void testNine() {
+        when(request.queryParam(anyString())).thenReturn(Optional.empty());
+        Optional<AutowirableMethod> method = autowirableMethod(new TestClass(), "nine");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Response response = method.get().invokeFromRequest(request, context);
+        assertNotNull(response);
+        assertEquals(200, response.status());
+        assertEquals(json("default"), response.data());
     }
 
     @Test
@@ -262,6 +276,11 @@ public class AutowirableMethodTest {
         @GET("/")
         public String eight() {
             throw new UnsupportedOperationException(ERROR);
+        }
+
+        @GET("/")
+        public String nine(@QueryParameter(value = "input", defaultValue = "default", mandatory = false) String input) {
+            return input;
         }
     }
 

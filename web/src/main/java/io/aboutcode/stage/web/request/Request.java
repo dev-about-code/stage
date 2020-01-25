@@ -61,7 +61,7 @@ public interface Request {
     Optional<String> queryParam(String name);
 
     /**
-     * Returns all specified quwery parameter names.
+     * Returns all specified query parameter names.
      *
      * @return A list of all specified query parameters for this request
      */
