@@ -8,11 +8,11 @@ import io.aboutcode.stage.web.autowire.auth.PermissiveAuthorizationRealm;
 import io.aboutcode.stage.web.autowire.auth.Unauthorized;
 import io.aboutcode.stage.web.autowire.exception.AutowiringException;
 import io.aboutcode.stage.web.autowire.exception.IllegalAutowireValueException;
+import io.aboutcode.stage.web.autowire.exception.UnauthorizedException;
 import io.aboutcode.stage.web.autowire.versioning.Version;
 import io.aboutcode.stage.web.autowire.versioning.VersionRange;
 import io.aboutcode.stage.web.autowire.versioning.Versioned;
 import io.aboutcode.stage.web.request.Request;
-import io.aboutcode.stage.web.response.NotAuthorized;
 import io.aboutcode.stage.web.response.NotFound;
 import io.aboutcode.stage.web.response.Ok;
 import io.aboutcode.stage.web.response.Response;
@@ -304,7 +304,7 @@ final class AutowirableMethod {
      */
     Response invokeFromRequest(Request request, AutowiringRequestContext context) {
         if (!authorizationRealm.isAuthorized(request)) {
-            return NotAuthorized.create();
+            return context.serialize(new UnauthorizedException(request.path()));
         }
 
         Object result;
@@ -368,6 +368,7 @@ final class AutowirableMethod {
                         (io.aboutcode.stage.web.autowire.QueryParameter) annotation;
                 return new QueryParameter(
                         queryParameter.value(),
+                        queryParameter.defaultValue(),
                         queryParameter.mandatory(),
                         parameter.getType());
             }
@@ -448,12 +449,15 @@ final class AutowirableMethod {
 
     private static class QueryParameter extends AutowiredParameter {
         private final String name;
+        private final String defaultValue;
         private final boolean mandatory;
         private final InputConverter converter;
         private Class<?> type;
 
-        private QueryParameter(String name, boolean mandatory, Class<?> type) {
+        private QueryParameter(String name, String defaultValue, boolean mandatory,
+                               Class<?> type) {
             this.name = name;
+            this.defaultValue = defaultValue;
             this.mandatory = mandatory;
             this.converter = DefaultTypeConverters.getConverter(type).orElseThrow(
                     () -> new IllegalArgumentException(
@@ -471,8 +475,12 @@ final class AutowirableMethod {
             }
 
             try {
-                //noinspection OptionalGetWithoutIsPresent
-                return converter.convert(optionalInput.get());
+                return optionalInput.map(converter::convert)
+                                    .orElseGet(() -> Optional.ofNullable(defaultValue)
+                                                             .filter(value -> !value.isEmpty())
+                                                             .map(converter::convert)
+                                                             .orElse(null)
+                                    );
             } catch (Exception e) {
                 throw new IllegalAutowireValueException(
                         String.format("Converting value for parameter '%s' caused exception: %s",

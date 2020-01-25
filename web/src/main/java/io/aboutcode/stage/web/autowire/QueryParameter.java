@@ -20,6 +20,15 @@ public @interface QueryParameter {
      */
     String value();
 
+
+    /**
+     * Returns the default value that this parameter should be assigned if it is not set
+     *
+     * @return The default value that this parameter should be assigned if it is not set. Must be
+     * parsable into the target type
+     */
+    String defaultValue() default "";
+
     /**
      * If true (the default), the request will fail with an error if the specified query parameter
      * is not found. Otherwise, this assigns null.

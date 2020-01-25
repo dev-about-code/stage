@@ -1,7 +1,9 @@
 package io.aboutcode.stage.web.serialization;
 
 import io.aboutcode.stage.web.autowire.exception.AutowiringException;
+import io.aboutcode.stage.web.autowire.exception.UnauthorizedException;
 import io.aboutcode.stage.web.response.InternalServerError;
+import io.aboutcode.stage.web.response.NotAuthorized;
 import io.aboutcode.stage.web.response.Response;
 import java.util.function.Function;
 
@@ -23,6 +25,8 @@ public final class DefaultExceptionSerialization implements Function<Exception, 
             throw exception;
         } catch (AutowiringException e) {
             return InternalServerError.with(e.getMessage());
+        } catch (UnauthorizedException e) {
+            return NotAuthorized.with(e.getMessage());
         } catch (Exception e) {
             return InternalServerError.with(e.getMessage());
         }

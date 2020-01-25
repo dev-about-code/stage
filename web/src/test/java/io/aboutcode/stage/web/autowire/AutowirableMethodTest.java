@@ -161,6 +161,18 @@ public class AutowirableMethodTest {
     }
 
     @Test
+    public void testNine() {
+        when(request.queryParam(anyString())).thenReturn(Optional.empty());
+        Optional<AutowirableMethod> method = autowirableMethod(new TestClass(), "nine");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Response response = method.get().invokeFromRequest(request, context);
+        assertNotNull(response);
+        assertEquals(200, response.status());
+        assertEquals(json("default"), response.data());
+    }
+
+    @Test
     public void testAuthOne() {
         defaultAuthorizationRealm = new RestrictiveAuthorizationRealm();
         availableAuthorizationRealms.add(defaultAuthorizationRealm);
@@ -262,6 +274,11 @@ public class AutowirableMethodTest {
         @GET("/")
         public String eight() {
             throw new UnsupportedOperationException(ERROR);
+        }
+
+        @GET("/")
+        public String nine(@QueryParameter(value = "input", defaultValue = "default", mandatory = false) String input) {
+            return input;
         }
     }
 

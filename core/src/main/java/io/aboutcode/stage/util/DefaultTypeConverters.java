@@ -61,14 +61,25 @@ public final class DefaultTypeConverters {
                     .with(ZonedDateTime.class, ZonedDateTime::parse)
                     .with(LocalDateTime.class, LocalDateTime::parse)
                     .with(LocalDate.class, LocalDate::parse)
-                    .with(LocalTime.class, LocalTime::parse)
-            ;
+                    .with(LocalTime.class, LocalTime::parse);
 
     private DefaultTypeConverters() {
     }
 
     public static <OutputT> Optional<InputConverter<OutputT>> getConverter(Class<OutputT> type) {
         //noinspection unchecked
-        return CLASS_TO_CONVERTER.dispatch(type).map(result -> (InputConverter<OutputT>) result);
+        return CLASS_TO_CONVERTER.dispatch(type)
+                                 .map(converter -> Optional.of((InputConverter<OutputT>) converter))
+                                 .orElseGet(() -> enumConverter(type));
+    }
+
+    private static <OutputT> Optional<InputConverter<OutputT>> enumConverter(Class<OutputT> type) {
+        if (Enum.class.isAssignableFrom(type)) {
+            //noinspection unchecked
+            return Optional.of(input -> (OutputT) Enum
+                    .valueOf((Class<Enum>) type, input));
+        }
+
+        return Optional.empty();
     }
 }

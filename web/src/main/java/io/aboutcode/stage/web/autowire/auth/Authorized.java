@@ -1,8 +1,5 @@
 package io.aboutcode.stage.web.autowire.auth;
 
-import io.aboutcode.stage.web.autowire.auth.PermissiveAuthorizationRealm;
-import io.aboutcode.stage.web.autowire.auth.AuthorizationRealm;
-import io.aboutcode.stage.web.autowire.auth.RestrictiveAuthorizationRealm;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
