@@ -303,12 +303,13 @@ final class AutowirableMethod {
      * @return The result of the execution
      */
     Response invokeFromRequest(Request request, AutowiringRequestContext context) {
-        if (!authorizationRealm.isAuthorized(request)) {
-            return context.serialize(new UnauthorizedException(request.path()));
-        }
-
         Object result;
         try {
+
+            if (!authorizationRealm.isAuthorized(request)) {
+                return context.serialize(new UnauthorizedException(request.path()));
+            }
+            
             result = method.invoke(targetObject,
                                    parameters.stream()
                                              .map(parameter -> parameter

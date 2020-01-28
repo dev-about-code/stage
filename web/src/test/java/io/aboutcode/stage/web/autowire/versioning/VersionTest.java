@@ -28,6 +28,26 @@ public class VersionTest {
     }
 
     @Test
+    public void testStringCreation_valid_majorOnly() {
+        Optional<Version> optionalVersion = Version.from("1");
+        assertTrue(optionalVersion.isPresent());
+        Version version = optionalVersion.get();
+        assertEquals(1, version.getMajor());
+        assertEquals(0, version.getMinor());
+        assertEquals(0, version.getPatch());
+    }
+
+    @Test
+    public void testStringCreation_valid_majorMinor() {
+        Optional<Version> optionalVersion = Version.from("1.2");
+        assertTrue(optionalVersion.isPresent());
+        Version version = optionalVersion.get();
+        assertEquals(1, version.getMajor());
+        assertEquals(2, version.getMinor());
+        assertEquals(0, version.getPatch());
+    }
+
+    @Test
     public void testStringCreation_big() {
         Optional<Version> optionalVersion = Version.from("111111111.222222222.333333333");
         assertTrue(optionalVersion.isPresent());
