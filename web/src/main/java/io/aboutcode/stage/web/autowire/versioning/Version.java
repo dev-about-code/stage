@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  * Instances of this represent a version with major, minor and patch version numbers.
  */
 public final class Version implements Comparable<Version> {
-    private static final Pattern PATTERN = Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)");
+    private static final Pattern PATTERN = Pattern.compile("(\\d+)(?:\\.(\\d+))?(?:\\.(\\d+))?");
     private final int major;
     private final int minor;
     private final int patch;
@@ -62,11 +62,14 @@ public final class Version implements Comparable<Version> {
 
     private static Optional<Version> version(Matcher matcher) {
         try {
-            return Optional.of(new Version(
-                    Integer.parseInt(matcher.group(1)),
-                    Integer.parseInt(matcher.group(2)),
-                    Integer.parseInt(matcher.group(3))
-            ));
+            int major = Integer.parseInt(matcher.group(1));
+            int minor = Optional.ofNullable(matcher.group(2))
+                                .map(Integer::parseInt)
+                                .orElse(0);
+            int patch = Optional.ofNullable(matcher.group(3))
+                                .map(Integer::parseInt)
+                                .orElse(0);
+            return Optional.of(new Version(major, minor, patch));
         } catch (Exception e) {
             return Optional.empty();
         }

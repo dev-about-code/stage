@@ -8,6 +8,11 @@ Instead, it allows you to focus on proper separation of concerns and helps you t
 structured and readable. This makes it the ideal candidate for applications that are expected to grow.
 
 ## Releases
+### `3.0.6`
+- Includes authorization checks in exception handling and allows custom exceptions to be thrown 
+during auth
+- `Version` now also allows incomplete version strings (e.g. `3.2` or even just `3`) 
+
 ### `3.0.5`
 - Allows default values for `@QueryParameter` annotations
 - `@QueryParameter` fields can also be enums now
