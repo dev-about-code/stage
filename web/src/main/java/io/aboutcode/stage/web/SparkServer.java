@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -166,10 +167,12 @@ final class SparkServer {
         HttpServletResponse servletResponse = rawResponse.raw();
 
         // if content-type is not set on response, set to requested content-type
-        request.header(KEY_ACCEPT_TYPE)
-               .map(HeaderAccess::acceptHeader)
-               .flatMap(types -> types.stream().findFirst())
-               .ifPresent(response::contentType);
+        if (Objects.isNull(response.contentType())) {
+            request.header(KEY_ACCEPT_TYPE)
+                   .map(HeaderAccess::acceptHeader)
+                   .flatMap(types -> types.stream().findFirst())
+                   .ifPresent(response::contentType);
+        }
 
         // add headers to spark response
         response.headers()

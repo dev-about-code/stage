@@ -64,4 +64,11 @@ public interface Response {
      * @return This for fluent interface
      */
     Response contentType(String contentType);
+
+    /**
+     * Returns the current value of the <code>Content-Type</code> header.
+     *
+     * @return The current value of the <code>Content-Type</code> header; null if it is not set
+     */
+    String contentType();
 }

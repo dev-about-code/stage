@@ -75,4 +75,9 @@ public class DefaultResponse implements Response {
         this.headers.put(CONTENT_TYPE_HEADER, contentType);
         return this;
     }
+
+    @Override
+    public String contentType() {
+        return this.headers.get(CONTENT_TYPE_HEADER);
+    }
 }
