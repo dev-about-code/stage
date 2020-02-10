@@ -247,6 +247,10 @@ final class AutowirableMethod {
         return ParameterAnnotationType.isMatching(annotation.annotationType());
     }
 
+    private static Response serialize(Response response, AutowiringRequestContext context) {
+        return response.data(context.serialize(response.data()));
+    }
+
     /**
      * Returns the access type of this method.
      *
@@ -309,15 +313,17 @@ final class AutowirableMethod {
             if (!authorizationRealm.isAuthorized(request)) {
                 return context.serialize(new UnauthorizedException(request.path()));
             }
-            
+
             result = method.invoke(targetObject,
                                    parameters.stream()
                                              .map(parameter -> parameter
                                                      .retrieveFrom(request, context)).toArray()
             );
         } catch (IllegalAccessException e) {
-            logger.error("No access for endpoint method {}: {}", method, e.getMessage(), e);
-            return NotFound.create();
+            String error = String.format("No access for endpoint method %s: %s", method,
+                                         e.getMessage());
+            logger.error(error, e);
+            return NotFound.with(context.serialize(error));
         } catch (InvocationTargetException e) {
             logger.error("Error invoking method {}: {}", method, e.getMessage(), e);
             return context.serialize((Exception) e.getCause());
@@ -327,11 +333,11 @@ final class AutowirableMethod {
         }
 
         if (raw) {
-            return (Response) result;
+            return serialize((Response) result, context);
         }
 
         if (result == null) {
-            return Ok.create();
+            return serialize(Ok.create(), context);
         }
 
         Response response = Ok.with(context.serialize(result));
