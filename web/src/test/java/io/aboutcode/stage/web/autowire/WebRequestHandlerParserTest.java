@@ -191,6 +191,26 @@ public class WebRequestHandlerParserTest {
     }
 
     @Test
+    public void testRawValid() throws Exception {
+        WebRequestHandler target = new ValidRawHandler();
+        List<Route> routes = parser.parse(null, set(target));
+        assertEquals(1, routes.size());
+
+        Route route = get("/one", routes);
+        Response response = route.getRequestHandler().process(request, currentResponse);
+        assertEquals(200, response.status());
+        Object data = response.data();
+        assertNotNull(data);
+        assertEquals("one", data);
+    }
+
+    @Test(expected = AutowiringException.class)
+    public void testRaw() {
+        WebRequestHandler target = new InvalidRawHandler();
+        parser.parse(null, set(target));
+    }
+
+    @Test
     public void testBaseVersioning() throws Exception {
         WebRequestHandler target = new BaseVersionHandler();
         List<Route> routes = parser.parse(null, set(target));
@@ -499,7 +519,7 @@ public class WebRequestHandlerParserTest {
         assertEquals(200, response.status());
         Object result = response.data();
         assertNotNull(result);
-        assertEquals(context.serialize(input.stringInput), result);
+        assertEquals(input.stringInput, result);
     }
 
     private static class TestInput {
@@ -659,6 +679,22 @@ public class WebRequestHandlerParserTest {
         @Versioned(introduced = "3.3.3")
         public String twoNewer() {
             return "twoNewer";
+        }
+    }
+
+    private static class ValidRawHandler implements WebRequestHandler {
+        @GET("one")
+        @Raw
+        public Response one() {
+            return Ok.with("one");
+        }
+    }
+
+    private static class InvalidRawHandler implements WebRequestHandler {
+        @GET("one")
+        @Raw
+        public String one() {
+            return "one";
         }
     }
 }
