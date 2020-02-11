@@ -25,6 +25,7 @@ public final class HeaderAccess {
             return Collections.emptySet();
         }
         return ACCESS_HEADER_PATTERN.splitAsStream(headerValue)
+                                    .filter(entry -> !entry.trim().isEmpty())
                                     .map(entry -> ACCESS_SUBHEADER_PATTERN
                                             .splitAsStream(entry)
                                             .findFirst()

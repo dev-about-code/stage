@@ -13,10 +13,7 @@ import io.aboutcode.stage.web.autowire.versioning.Version;
 import io.aboutcode.stage.web.autowire.versioning.VersionRange;
 import io.aboutcode.stage.web.autowire.versioning.Versioned;
 import io.aboutcode.stage.web.request.Request;
-import io.aboutcode.stage.web.response.NotFound;
-import io.aboutcode.stage.web.response.Ok;
 import io.aboutcode.stage.web.response.Response;
-import io.aboutcode.stage.web.serialization.ContentTypeException;
 import io.aboutcode.stage.web.util.Paths;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
@@ -30,14 +27,11 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
  */
 final class AutowirableMethod {
-    private static final Logger logger = LoggerFactory.getLogger(AutowirableMethod.class);
     private final String basePath;
     private final AccessType accessType;
     private final Object targetObject;
@@ -247,10 +241,6 @@ final class AutowirableMethod {
         return ParameterAnnotationType.isMatching(annotation.annotationType());
     }
 
-    private static Response serialize(Response response, AutowiringRequestContext context) {
-        return response.data(context.serialize(response.data()));
-    }
-
     /**
      * Returns the access type of this method.
      *
@@ -298,6 +288,16 @@ final class AutowirableMethod {
     }
 
     /**
+     * Returns whether the method represented by this object should return a raw value (i.e. the
+     * contents of the response should not be serialized and the object be returned as-is)
+     *
+     * @return True if this is a <em>raw</em> method; false otherwise
+     */
+    public boolean isRaw() {
+        return raw;
+    }
+
+    /**
      * Executes the method in the context of the specified request.
      *
      * @param request The request to execute the method for
@@ -306,50 +306,20 @@ final class AutowirableMethod {
      *
      * @return The result of the execution
      */
-    Response invokeFromRequest(Request request, AutowiringRequestContext context) {
-        Object result;
+    Object invokeFromRequest(Request request, AutowiringRequestContext context) throws Exception {
+        if (!authorizationRealm.isAuthorized(request)) {
+            throw new UnauthorizedException(request.path());
+        }
+
         try {
-
-            if (!authorizationRealm.isAuthorized(request)) {
-                return context.serialize(new UnauthorizedException(request.path()));
-            }
-
-            result = method.invoke(targetObject,
-                                   parameters.stream()
-                                             .map(parameter -> parameter
-                                                     .retrieveFrom(request, context)).toArray()
+            return method.invoke(targetObject,
+                                 parameters.stream()
+                                           .map(parameter -> parameter
+                                                   .retrieveFrom(request, context)).toArray()
             );
-        } catch (IllegalAccessException e) {
-            String error = String.format("No access for endpoint method %s: %s", method,
-                                         e.getMessage());
-            logger.error(error, e);
-            return NotFound.with(context.serialize(error));
         } catch (InvocationTargetException e) {
-            logger.error("Error invoking method {}: {}", method, e.getMessage(), e);
-            return context.serialize((Exception) e.getCause());
-        } catch (Exception e) {
-            logger.error("Error invoking method {}: {}", method, e.getMessage(), e);
-            return context.serialize(e);
+            throw (Exception) e.getCause();
         }
-
-        if (raw) {
-            return serialize((Response) result, context);
-        }
-
-        if (result == null) {
-            return serialize(Ok.create(), context);
-        }
-
-        Response response = Ok.with(context.serialize(result));
-        try {
-            context.setContentType(request, response);
-        } catch (ContentTypeException e) {
-            logger.error("Could not set content type for response of method {}: {}", method,
-                         e.getMessage(), e);
-            return context.serialize(e);
-        }
-
-        return response;
     }
 
     @SuppressWarnings("unused")
