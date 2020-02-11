@@ -15,12 +15,15 @@ import io.aboutcode.stage.web.autowire.versioning.Versioned;
 import io.aboutcode.stage.web.request.Request;
 import io.aboutcode.stage.web.response.Response;
 import io.aboutcode.stage.web.util.Paths;
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.*;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -57,17 +60,18 @@ final class AutowirableMethod {
     }
 
     /**
-     * Creates an {@link AutowirableMethod} from the specified parameters if the method is annotated properly with an
-     * {@link AccessType} annotation.
+     * Creates an {@link AutowirableMethod} from the specified parameters if the method is annotated
+     * properly with an {@link AccessType} annotation.
      *
-     * @param basePath                     The path that the path of this method is relative to; usually the path
-     *                                     specified on class-level
-     * @param targetObject                 The object that the method should be executed on when the {@link
-     *                                     AutowirableMethod} is called
+     * @param basePath                     The path that the path of this method is relative to;
+     *                                     usually the path specified on class-level
+     * @param targetObject                 The object that the method should be executed on when the
+     *                                     {@link AutowirableMethod} is called
      * @param method                       The method that should be invoked on the target object
-     * @param defaultAuthorizationRealm    The default realm to use if the method does not define its own realm. Must
-     *                                     not be null
+     * @param defaultAuthorizationRealm    The default realm to use if the method does not define
+     *                                     its own realm. Must not be null
      * @param availableAuthorizationRealms All available authorization realms
+     *
      * @return Optionally, the {@link AutowirableMethod} that can be invoked for a web request
      */
     static Optional<AutowirableMethod> from(String basePath,
@@ -115,7 +119,7 @@ final class AutowirableMethod {
                      .map(versioned -> VersionRange.between(
                              Version.from(versioned.introduced()).orElse(null),
                              Version.from(versioned.deprecated()).orElse(null)
-                                                           ))
+                     ))
                      .orElse(null);
     }
 
@@ -152,7 +156,7 @@ final class AutowirableMethod {
                   .filter(annotation ->
                                   Objects.equals(annotation.annotationType(), Authorized.class) ||
                                   Objects.equals(annotation.annotationType(), Unauthorized.class)
-                         )
+                  )
                   .count() > 1) {
             throw exception("Multiple authorization annotations found", method);
         }
@@ -256,8 +260,8 @@ final class AutowirableMethod {
     }
 
     /**
-     * Returns the path this method is configured to be exposed at. Note that this is relative to any paths configured
-     * globally and/or on the containing class.
+     * Returns the path this method is configured to be exposed at. Note that this is relative to
+     * any paths configured globally and/or on the containing class.
      *
      * @return The configured path
      */
@@ -284,10 +288,22 @@ final class AutowirableMethod {
     }
 
     /**
+     * Returns whether the method represented by this object should return a raw value (i.e. the
+     * contents of the response should not be serialized and the object be returned as-is)
+     *
+     * @return True if this is a <em>raw</em> method; false otherwise
+     */
+    public boolean isRaw() {
+        return raw;
+    }
+
+    /**
      * Executes the method in the context of the specified request.
      *
      * @param request The request to execute the method for
-     * @param context The context that allows the method to perform operations on its application context
+     * @param context The context that allows the method to perform operations on its application
+     *                context
+     *
      * @return The result of the execution
      */
     Object invokeFromRequest(Request request, AutowiringRequestContext context) throws Exception {
@@ -300,7 +316,7 @@ final class AutowirableMethod {
                                  parameters.stream()
                                            .map(parameter -> parameter
                                                    .retrieveFrom(request, context)).toArray()
-                                );
+            );
         } catch (InvocationTargetException e) {
             throw (Exception) e.getCause();
         }
@@ -441,7 +457,7 @@ final class AutowirableMethod {
                                                              .filter(value -> !value.isEmpty())
                                                              .map(converter::convert)
                                                              .orElse(null)
-                                              );
+                                    );
             } catch (Exception e) {
                 throw new IllegalAutowireValueException(
                         String.format("Converting value for parameter '%s' caused exception: %s",

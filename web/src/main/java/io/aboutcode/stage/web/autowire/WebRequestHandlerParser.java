@@ -13,9 +13,6 @@ import io.aboutcode.stage.web.response.Ok;
 import io.aboutcode.stage.web.response.Response;
 import io.aboutcode.stage.web.serialization.ContentTypeException;
 import io.aboutcode.stage.web.util.Paths;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -25,11 +22,13 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Instances of this transform a {@link WebRequestHandler} containing methods that should serve as web endpoints into an
- * executable format. This executable format handles injection of parameters, conversion of (return) types and exception
- * handling in a generic manner.
+ * Instances of this transform a {@link WebRequestHandler} containing methods that should serve as
+ * web endpoints into an executable format. This executable format handles injection of parameters,
+ * conversion of (return) types and exception handling in a generic manner.
  */
 public final class WebRequestHandlerParser {
     private static final Logger logger = LoggerFactory.getLogger(WebRequestHandlerParser.class);
@@ -42,7 +41,8 @@ public final class WebRequestHandlerParser {
      * Creates a new parser with all available {@link AuthorizationRealm}s.
      *
      * @param availableAuthorizationRealms All available {@link AuthorizationRealm}s
-     * @param context                      The context used for accessing web server scoped functionality
+     * @param context                      The context used for accessing web server scoped
+     *                                     functionality
      */
     public WebRequestHandlerParser(Set<AuthorizationRealm> availableAuthorizationRealms,
                                    AutowiringRequestContext context) {
@@ -90,12 +90,15 @@ public final class WebRequestHandlerParser {
     }
 
     /**
-     * Parses the information on the specified {@link WebRequestHandler}s into a list of {@link Route}s that can be
-     * served by a webserver. All handlers that should be served on the same root path <em>must</em> be included to be
-     * able to group {@link io.aboutcode.stage.web.autowire.versioning.Versioned} endpoints together.
+     * Parses the information on the specified {@link WebRequestHandler}s into a list of {@link
+     * Route}s that can be served by a webserver. All handlers that should be served on the same
+     * root path <em>must</em> be included to be able to group {@link io.aboutcode.stage.web.autowire.versioning.Versioned}
+     * endpoints together.
      *
-     * @param rootPath The root path for all routes created through this parser. Defaults to "/" if empty.
+     * @param rootPath The root path for all routes created through this parser. Defaults to "/" if
+     *                 empty.
      * @param handlers The handlers to analyse
+     *
      * @return The list of routes that represent the endpoints defined by the specified handlers
      */
     public List<Route> parse(String rootPath, Set<? extends WebRequestHandler> handlers) {
@@ -248,7 +251,9 @@ public final class WebRequestHandlerParser {
             }
 
             // serialize the contents of the response
-            response.data(context.serialize(response.data()));
+            if (method.isRaw()) {
+                response.data(context.serialize(response.data()));
+            }
 
             try {
                 context.setContentType(request, response);
