@@ -13,31 +13,22 @@ import io.aboutcode.stage.web.autowire.versioning.Version;
 import io.aboutcode.stage.web.autowire.versioning.VersionRange;
 import io.aboutcode.stage.web.autowire.versioning.Versioned;
 import io.aboutcode.stage.web.request.Request;
-import io.aboutcode.stage.web.response.NotFound;
-import io.aboutcode.stage.web.response.Ok;
 import io.aboutcode.stage.web.response.Response;
-import io.aboutcode.stage.web.serialization.ContentTypeException;
 import io.aboutcode.stage.web.util.Paths;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
  */
 final class AutowirableMethod {
-    private static final Logger logger = LoggerFactory.getLogger(AutowirableMethod.class);
     private final String basePath;
     private final AccessType accessType;
     private final Object targetObject;
@@ -66,18 +57,17 @@ final class AutowirableMethod {
     }
 
     /**
-     * Creates an {@link AutowirableMethod} from the specified parameters if the method is annotated
-     * properly with an {@link AccessType} annotation.
+     * Creates an {@link AutowirableMethod} from the specified parameters if the method is annotated properly with an
+     * {@link AccessType} annotation.
      *
-     * @param basePath                     The path that the path of this method is relative to;
-     *                                     usually the path specified on class-level
-     * @param targetObject                 The object that the method should be executed on when the
-     *                                     {@link AutowirableMethod} is called
+     * @param basePath                     The path that the path of this method is relative to; usually the path
+     *                                     specified on class-level
+     * @param targetObject                 The object that the method should be executed on when the {@link
+     *                                     AutowirableMethod} is called
      * @param method                       The method that should be invoked on the target object
-     * @param defaultAuthorizationRealm    The default realm to use if the method does not define
-     *                                     its own realm. Must not be null
+     * @param defaultAuthorizationRealm    The default realm to use if the method does not define its own realm. Must
+     *                                     not be null
      * @param availableAuthorizationRealms All available authorization realms
-     *
      * @return Optionally, the {@link AutowirableMethod} that can be invoked for a web request
      */
     static Optional<AutowirableMethod> from(String basePath,
@@ -125,7 +115,7 @@ final class AutowirableMethod {
                      .map(versioned -> VersionRange.between(
                              Version.from(versioned.introduced()).orElse(null),
                              Version.from(versioned.deprecated()).orElse(null)
-                     ))
+                                                           ))
                      .orElse(null);
     }
 
@@ -162,7 +152,7 @@ final class AutowirableMethod {
                   .filter(annotation ->
                                   Objects.equals(annotation.annotationType(), Authorized.class) ||
                                   Objects.equals(annotation.annotationType(), Unauthorized.class)
-                  )
+                         )
                   .count() > 1) {
             throw exception("Multiple authorization annotations found", method);
         }
@@ -247,10 +237,6 @@ final class AutowirableMethod {
         return ParameterAnnotationType.isMatching(annotation.annotationType());
     }
 
-    private static Response serialize(Response response, AutowiringRequestContext context) {
-        return response.data(context.serialize(response.data()));
-    }
-
     /**
      * Returns the access type of this method.
      *
@@ -270,8 +256,8 @@ final class AutowirableMethod {
     }
 
     /**
-     * Returns the path this method is configured to be exposed at. Note that this is relative to
-     * any paths configured globally and/or on the containing class.
+     * Returns the path this method is configured to be exposed at. Note that this is relative to any paths configured
+     * globally and/or on the containing class.
      *
      * @return The configured path
      */
@@ -301,55 +287,23 @@ final class AutowirableMethod {
      * Executes the method in the context of the specified request.
      *
      * @param request The request to execute the method for
-     * @param context The context that allows the method to perform operations on its application
-     *                context
-     *
+     * @param context The context that allows the method to perform operations on its application context
      * @return The result of the execution
      */
-    Response invokeFromRequest(Request request, AutowiringRequestContext context) {
-        Object result;
+    Object invokeFromRequest(Request request, AutowiringRequestContext context) throws Exception {
+        if (!authorizationRealm.isAuthorized(request)) {
+            throw new UnauthorizedException(request.path());
+        }
+
         try {
-
-            if (!authorizationRealm.isAuthorized(request)) {
-                return context.serialize(new UnauthorizedException(request.path()));
-            }
-
-            result = method.invoke(targetObject,
-                                   parameters.stream()
-                                             .map(parameter -> parameter
-                                                     .retrieveFrom(request, context)).toArray()
-            );
-        } catch (IllegalAccessException e) {
-            String error = String.format("No access for endpoint method %s: %s", method,
-                                         e.getMessage());
-            logger.error(error, e);
-            return NotFound.with(context.serialize(error));
+            return method.invoke(targetObject,
+                                 parameters.stream()
+                                           .map(parameter -> parameter
+                                                   .retrieveFrom(request, context)).toArray()
+                                );
         } catch (InvocationTargetException e) {
-            logger.error("Error invoking method {}: {}", method, e.getMessage(), e);
-            return context.serialize((Exception) e.getCause());
-        } catch (Exception e) {
-            logger.error("Error invoking method {}: {}", method, e.getMessage(), e);
-            return context.serialize(e);
+            throw (Exception) e.getCause();
         }
-
-        if (raw) {
-            return serialize((Response) result, context);
-        }
-
-        if (result == null) {
-            return serialize(Ok.create(), context);
-        }
-
-        Response response = Ok.with(context.serialize(result));
-        try {
-            context.setContentType(request, response);
-        } catch (ContentTypeException e) {
-            logger.error("Could not set content type for response of method {}: {}", method,
-                         e.getMessage(), e);
-            return context.serialize(e);
-        }
-
-        return response;
     }
 
     @SuppressWarnings("unused")
@@ -487,7 +441,7 @@ final class AutowirableMethod {
                                                              .filter(value -> !value.isEmpty())
                                                              .map(converter::convert)
                                                              .orElse(null)
-                                    );
+                                              );
             } catch (Exception e) {
                 throw new IllegalAutowireValueException(
                         String.format("Converting value for parameter '%s' caused exception: %s",
