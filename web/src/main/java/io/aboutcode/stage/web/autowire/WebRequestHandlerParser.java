@@ -251,7 +251,7 @@ public final class WebRequestHandlerParser {
             }
 
             // serialize the contents of the response
-            if (method.isRaw()) {
+            if (!method.isRaw()) {
                 response.data(context.serialize(response.data()));
             }
 
