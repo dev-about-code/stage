@@ -490,8 +490,7 @@ public class WebRequestHandlerParserTest {
             }
 
             @Override
-            public void setContentType(Request request, Response response)
-                    throws ContentTypeException {
+            public void setContentType(Request request, Response response) {
                 jsonConverter.setContentType(request, response);
             }
         };
@@ -519,7 +518,7 @@ public class WebRequestHandlerParserTest {
         assertEquals(200, response.status());
         Object result = response.data();
         assertNotNull(result);
-        assertEquals(input.stringInput, result);
+        assertEquals(context.serialize(input.stringInput), result);
     }
 
     private static class TestInput {
