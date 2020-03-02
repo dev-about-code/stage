@@ -4,10 +4,10 @@ import io.aboutcode.stage.component.BaseComponent;
 import io.aboutcode.stage.persistence.Persistence;
 import java.io.IOException;
 import java.util.stream.Stream;
-import org.neo4j.driver.v1.Driver;
-import org.neo4j.driver.v1.Session;
-import org.neo4j.driver.v1.Transaction;
-import org.neo4j.driver.v1.TransactionWork;
+import org.neo4j.driver.Driver;
+import org.neo4j.driver.Session;
+import org.neo4j.driver.Transaction;
+import org.neo4j.driver.TransactionWork;
 
 /**
  * An implementation of {@link Persistence} that allows access to a Neo4J graph database.
@@ -91,9 +91,9 @@ public class BoltNeo4JPersistence extends BaseComponent implements Persistence<T
             T result = null;
             try {
                 result = operation.execute(transaction);
-                transaction.success();
+                transaction.commit();
             } catch (Exception e) {
-                transaction.failure();
+                transaction.rollback();
                 exception = new IOException(e);
             } finally {
                 transaction.close();

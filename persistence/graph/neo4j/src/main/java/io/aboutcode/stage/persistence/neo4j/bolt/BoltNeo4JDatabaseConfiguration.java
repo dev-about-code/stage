@@ -1,7 +1,6 @@
 package io.aboutcode.stage.persistence.neo4j.bolt;
 
-
-import org.neo4j.driver.v1.Driver;
+import org.neo4j.driver.Driver;
 
 /**
  * <p>Implementations of this allow configurtion of BOLT Neo4J database connections.</p>
