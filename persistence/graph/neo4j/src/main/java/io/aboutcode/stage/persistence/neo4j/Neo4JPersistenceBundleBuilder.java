@@ -14,10 +14,10 @@ import io.aboutcode.stage.persistence.neo4j.bolt.BoltNeo4JPersistence;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Objects;
-import org.neo4j.driver.v1.AuthTokens;
-import org.neo4j.driver.v1.Config;
-import org.neo4j.driver.v1.Driver;
-import org.neo4j.driver.v1.GraphDatabase;
+import org.neo4j.driver.AuthTokens;
+import org.neo4j.driver.Config;
+import org.neo4j.driver.Driver;
+import org.neo4j.driver.GraphDatabase;
 import org.neo4j.jdbc.bolt.BoltNeo4jDataSource;
 
 /**
@@ -156,11 +156,10 @@ public final class Neo4JPersistenceBundleBuilder {
         @Override
         public Driver apply() {
             Config config = Config
-                    .build()
+                    .builder()
                     .withEncryption()
                     .withLeakedSessionsLogging()
-                    .withLoadBalancingStrategy(Config.LoadBalancingStrategy.LEAST_CONNECTED)
-                    .toConfig();
+                    .build();
             URI uri;
             try {
                 uri = new URI("bolt", null, host, DEFAULT_PORT, null, null, null);
