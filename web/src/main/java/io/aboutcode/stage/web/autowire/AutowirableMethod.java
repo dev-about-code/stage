@@ -1,7 +1,6 @@
 package io.aboutcode.stage.web.autowire;
 
-import io.aboutcode.stage.util.DefaultTypeConverters;
-import io.aboutcode.stage.util.InputConverter;
+import io.aboutcode.stage.util.TypeInformation;
 import io.aboutcode.stage.web.autowire.auth.AuthorizationRealm;
 import io.aboutcode.stage.web.autowire.auth.Authorized;
 import io.aboutcode.stage.web.autowire.auth.PermissiveAuthorizationRealm;
@@ -19,12 +18,12 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -327,9 +326,10 @@ final class AutowirableMethod {
         PATH {
             @Override
             AutowiredParameter autowiredParameter(Parameter parameter, Annotation annotation) {
+                TypeInformation typeInformation = TypeInformation.from(parameter);
                 return new PathParameter(
                         ((io.aboutcode.stage.web.autowire.PathParameter) annotation).value(),
-                        parameter.getType());
+                        typeInformation);
             }
 
             @Override
@@ -343,11 +343,12 @@ final class AutowirableMethod {
             AutowiredParameter autowiredParameter(Parameter parameter, Annotation annotation) {
                 io.aboutcode.stage.web.autowire.QueryParameter queryParameter =
                         (io.aboutcode.stage.web.autowire.QueryParameter) annotation;
+                TypeInformation typeInformation = TypeInformation.from(parameter);
                 return new QueryParameter(
                         queryParameter.value(),
                         queryParameter.defaultValue(),
                         queryParameter.mandatory(),
-                        parameter.getType());
+                        typeInformation);
             }
 
             @Override
@@ -397,13 +398,11 @@ final class AutowirableMethod {
 
     private static class PathParameter extends AutowiredParameter {
         private final String name;
-        private final InputConverter converter;
+        private final TypeInformation typeInformation;
 
-        private PathParameter(String name, Class<?> type) {
+        private PathParameter(String name, TypeInformation typeInformation) {
             this.name = name;
-            this.converter = DefaultTypeConverters.getConverter(type).orElseThrow(
-                    () -> new IllegalArgumentException(
-                            "No converter available for type " + type.getSimpleName()));
+            this.typeInformation = typeInformation;
         }
 
         @Override
@@ -411,7 +410,8 @@ final class AutowirableMethod {
                 throws IllegalAutowireValueException {
             try {
                 return request.pathParam(name)
-                              .map((Function<String, Object>) converter::convert)
+                              .map(value -> typeInformation
+                                      .convert(Collections.singletonList(value)))
                               .orElseThrow(() -> new IllegalAutowireValueException(
                                       String.format("Parameter '%s' in path missing", name)));
             } catch (IllegalAutowireValueException e) {
@@ -428,36 +428,36 @@ final class AutowirableMethod {
         private final String name;
         private final String defaultValue;
         private final boolean mandatory;
-        private final InputConverter converter;
-        private Class<?> type;
+        private final TypeInformation typeInformation;
 
         private QueryParameter(String name, String defaultValue, boolean mandatory,
-                               Class<?> type) {
+                               TypeInformation typeInformation) {
             this.name = name;
             this.defaultValue = defaultValue;
             this.mandatory = mandatory;
-            this.converter = DefaultTypeConverters.getConverter(type).orElseThrow(
-                    () -> new IllegalArgumentException(
-                            "No converter available for type " + type.getSimpleName()));
-            this.type = type;
+            this.typeInformation = typeInformation;
         }
 
         @Override
         Object retrieveFrom(Request request, AutowiringRequestContext context)
                 throws IllegalAutowireValueException {
-            Optional<String> optionalInput = request.queryParam(name);
-            if (!optionalInput.isPresent() && (mandatory || type.isPrimitive())) {
+            List<String> input = request.queryParams(name);
+            if(input != null && input.isEmpty()) {
+                input = null;
+            }
+
+            if (input == null && (mandatory || typeInformation.isPrimitive())) {
                 throw new IllegalAutowireValueException(
                         String.format("Mandatory parameter '%s' was null", name));
             }
 
             try {
-                return optionalInput.map(converter::convert)
-                                    .orElseGet(() -> Optional.ofNullable(defaultValue)
-                                                             .filter(value -> !value.isEmpty())
-                                                             .map(converter::convert)
-                                                             .orElse(null)
-                                    );
+                input = Optional.ofNullable(input)
+                                .orElseGet(() -> Optional.ofNullable(defaultValue)
+                                                         .map(Collections::singletonList)
+                                                         .orElse(null)
+                                );
+                return typeInformation.convert(input);
             } catch (Exception e) {
                 throw new IllegalAutowireValueException(
                         String.format("Converting value for parameter '%s' caused exception: %s",
