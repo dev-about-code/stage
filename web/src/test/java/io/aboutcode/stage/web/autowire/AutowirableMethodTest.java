@@ -1,27 +1,36 @@
 package io.aboutcode.stage.web.autowire;
 
-import io.aboutcode.stage.web.autowire.auth.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import io.aboutcode.stage.web.autowire.auth.AuthorizationRealm;
+import io.aboutcode.stage.web.autowire.auth.Authorized;
+import io.aboutcode.stage.web.autowire.auth.PermissiveAuthorizationRealm;
+import io.aboutcode.stage.web.autowire.auth.RestrictiveAuthorizationRealm;
+import io.aboutcode.stage.web.autowire.auth.Unauthorized;
 import io.aboutcode.stage.web.autowire.exception.AutowiringException;
 import io.aboutcode.stage.web.autowire.exception.UnauthorizedException;
 import io.aboutcode.stage.web.request.Request;
 import io.aboutcode.stage.web.response.Response;
 import io.aboutcode.stage.web.serialization.DefaultExceptionSerialization;
 import io.aboutcode.stage.web.serialization.JsonWebSerialization;
-import org.junit.Before;
-import org.junit.Test;
-
 import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static org.junit.Assert.*;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import org.junit.Before;
+import org.junit.Test;
 
 public class AutowirableMethodTest {
     private static final String TEST_STRING = "TEST";
@@ -70,6 +79,7 @@ public class AutowirableMethodTest {
         when(request.body()).thenReturn(BODY);
         when(request.pathParam(anyString())).thenReturn(Optional.of(PATH_PARAM));
         when(request.queryParam(anyString())).thenReturn(Optional.of(QUERY_PARAM));
+        when(request.queryParams(anyString())).thenReturn(Collections.singletonList(QUERY_PARAM));
         when(request.path()).thenReturn(PATH);
     }
 
@@ -143,11 +153,109 @@ public class AutowirableMethodTest {
     @Test
     public void testNine() throws Exception {
         when(request.queryParam(anyString())).thenReturn(Optional.empty());
+        when(request.queryParams(anyString())).thenReturn(Collections.emptyList());
         Optional<AutowirableMethod> method = autowirableMethod(new TestClass(), "nine");
         assertNotNull(method);
         assertTrue(method.isPresent());
         Object response = method.get().invokeFromRequest(request, context);
         assertEquals("default", response);
+    }
+
+    @Test
+    public void complexTypeTestOne() throws Exception {
+        Optional<AutowirableMethod> method = autowirableMethod(new ComplexTypeTest(), "one");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Object response = method.get().invokeFromRequest(request, context);
+        assertEquals(PATH_PARAM, response);
+    }
+
+    @Test
+    public void complexTypeTestTwo() throws Exception {
+        when(request.queryParams(anyString())).thenReturn(Stream.of("a", "b", "c", "a").collect(
+                Collectors.toList()));
+        Optional<AutowirableMethod> method = autowirableMethod(new ComplexTypeTest(), "two");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Object response = method.get().invokeFromRequest(request, context);
+        assertEquals(PATH_PARAM, response);
+    }
+
+    @Test
+    public void complexTypeTestThree() throws Exception {
+        when(request.queryParams(anyString())).thenReturn(Stream.of("a", "b", "c", "a").collect(
+                Collectors.toList()));
+        Optional<AutowirableMethod> method = autowirableMethod(new ComplexTypeTest(), "three");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Object response = method.get().invokeFromRequest(request, context);
+        assertEquals(PATH_PARAM, response);
+    }
+
+    @Test
+    public void complexTypeTestFour() throws Exception {
+        when(request.queryParams(anyString())).thenReturn(Stream.of("a", "b", "c", "a").collect(
+                Collectors.toList()));
+        Optional<AutowirableMethod> method = autowirableMethod(new ComplexTypeTest(), "four");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Object response = method.get().invokeFromRequest(request, context);
+        assertEquals("a-b-c-a", response);
+    }
+
+    @Test
+    public void complexTypeTestFive() throws Exception {
+        when(request.queryParams(anyString())).thenReturn(Stream.of("a", "b", "c", "a").collect(
+                Collectors.toList()));
+        Optional<AutowirableMethod> method = autowirableMethod(new ComplexTypeTest(), "five");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Object response = method.get().invokeFromRequest(request, context);
+        assertEquals("a-b-c-a", response);
+    }
+
+    @Test
+    public void complexTypeTestSix() throws Exception {
+        when(request.queryParams(anyString())).thenReturn(Stream.of("a", "b", "c", "a").collect(
+                Collectors.toList()));
+        Optional<AutowirableMethod> method = autowirableMethod(new ComplexTypeTest(), "six");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Object response = method.get().invokeFromRequest(request, context);
+        assertEquals("a-b-c-a", response);
+    }
+
+    @Test
+    public void complexTypeTestSeven() throws Exception {
+        when(request.queryParams(anyString())).thenReturn(Stream.of("a", "b", "c", "a").collect(
+                Collectors.toList()));
+        Optional<AutowirableMethod> method = autowirableMethod(new ComplexTypeTest(), "seven");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Object response = method.get().invokeFromRequest(request, context);
+        assertEquals("a-b-c", response);
+    }
+
+    @Test
+    public void complexTypeTestEight() throws Exception {
+        when(request.queryParams(anyString())).thenReturn(Stream.of("1", "2", "1", "3").collect(
+                Collectors.toList()));
+        Optional<AutowirableMethod> method = autowirableMethod(new ComplexTypeTest(), "eight");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Object response = method.get().invokeFromRequest(request, context);
+        assertEquals("1-2-3", response);
+    }
+
+    @Test
+    public void complexTypeTestNine() throws Exception {
+        when(request.queryParams(anyString())).thenReturn(Stream.of("1", "2", "1", "3").collect(
+                Collectors.toList()));
+        Optional<AutowirableMethod> method = autowirableMethod(new ComplexTypeTest(), "nine");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Object response = method.get().invokeFromRequest(request, context);
+        assertEquals("1-2-1-3-", response);
     }
 
     @Test(expected = UnauthorizedException.class)
@@ -191,7 +299,7 @@ public class AutowirableMethodTest {
                                                                      Method::getName,
                                                                      Function.identity(),
                                                                      (current, next) -> current
-                                                                                      ));
+                                                             ));
         return AutowirableMethod
                 .from(null, instance, methodNameToMethod.get(methodName), defaultAuthorizationRealm,
                       availableAuthorizationRealms);
@@ -247,7 +355,8 @@ public class AutowirableMethodTest {
         }
 
         @GET("/")
-        public String nine(@QueryParameter(value = "input", defaultValue = "default", mandatory = false) String input) {
+        public String nine(
+                @QueryParameter(value = "input", defaultValue = "default", mandatory = false) String input) {
             return input;
         }
     }
@@ -269,6 +378,59 @@ public class AutowirableMethodTest {
         @Unauthorized
         public void three() {
 
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private static class ComplexTypeTest {
+        @GET("/")
+        public String one(@PathParameter("input") String[] input) {
+            return String.join("-", input);
+        }
+
+        @GET("/")
+        public String two(@PathParameter("input") List<String> input) {
+            return String.join("-", input);
+        }
+
+        @GET("/")
+        public String three(@PathParameter("input") Collection<String> input) {
+            return String.join("-", input);
+        }
+
+        @GET("/")
+        public String four(@QueryParameter("input") String[] input) {
+            return String.join("-", input);
+        }
+
+        @GET("/")
+        public String five(@QueryParameter("input") List<String> input) {
+            return String.join("-", input);
+        }
+
+        @GET("/")
+        public String six(@QueryParameter("input") Collection<String> input) {
+            return String.join("-", input);
+        }
+
+        @GET("/")
+        public String seven(@QueryParameter("input") Set<String> input) {
+            return String.join("-", input);
+        }
+
+        @GET("/")
+        public String eight(@QueryParameter("input") Set<Long> input) {
+            return input.stream().map(el -> Long.toString(el)).collect(Collectors.joining("-"));
+        }
+
+        @GET("/")
+        public String nine(@QueryParameter("input") long[] input) {
+            StringBuilder builder = new StringBuilder();
+            for (long el : input) {
+                builder.append(el);
+                builder.append("-");
+            }
+            return builder.toString();
         }
     }
 }

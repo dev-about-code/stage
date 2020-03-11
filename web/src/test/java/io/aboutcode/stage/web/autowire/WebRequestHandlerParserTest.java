@@ -19,6 +19,7 @@ import io.aboutcode.stage.web.response.Ok;
 import io.aboutcode.stage.web.response.Response;
 import io.aboutcode.stage.web.serialization.ContentTypeException;
 import io.aboutcode.stage.web.serialization.JsonWebSerialization;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -140,7 +141,7 @@ public class WebRequestHandlerParserTest {
         assertNotNull(data);
         assertEquals("123", data);
 
-        when(request.queryParam(eq("input"))).thenReturn(Optional.of("query"));
+        when(request.queryParams(eq("input"))).thenReturn(Collections.singletonList("query"));
 
         route = get("/test/six", routes);
         assertEquals(RequestType.GET, route.getType());
@@ -326,7 +327,7 @@ public class WebRequestHandlerParserTest {
         List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
-        when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
+        when(request.queryParams(eq("input"))).thenReturn(Collections.singletonList(result));
 
         Route route = get("/" + path, routes);
         assertEquals(RequestType.POST, route.getType());
@@ -350,7 +351,7 @@ public class WebRequestHandlerParserTest {
         List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
-        when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
+        when(request.queryParams(eq("input"))).thenReturn(Collections.singletonList(result));
 
         Route route = get("/" + path, routes);
         assertEquals(RequestType.PATCH, route.getType());
@@ -374,7 +375,7 @@ public class WebRequestHandlerParserTest {
         List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
-        when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
+        when(request.queryParams(eq("input"))).thenReturn(Collections.singletonList(result));
 
         Route route = get("/" + path, routes);
         assertEquals(RequestType.OPTIONS, route.getType());
@@ -398,7 +399,7 @@ public class WebRequestHandlerParserTest {
         List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
-        when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
+        when(request.queryParams(eq("input"))).thenReturn(Collections.singletonList(result));
 
         Route route = get("/" + path, routes);
         assertEquals(RequestType.PUT, route.getType());
@@ -422,7 +423,7 @@ public class WebRequestHandlerParserTest {
         List<Route> routes = parser.parse(null, set(target));
         assertEquals(1, routes.size());
 
-        when(request.queryParam(eq("input"))).thenReturn(Optional.of(result));
+        when(request.queryParams(eq("input"))).thenReturn(Collections.singletonList(result));
 
         Route route = get("/" + path, routes);
         assertEquals(RequestType.DELETE, route.getType());
