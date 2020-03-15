@@ -162,6 +162,16 @@ public class AutowirableMethodTest {
     }
 
     @Test
+    public void testTen() throws Exception {
+        when(request.queryParams(anyString())).thenReturn(null);
+        Optional<AutowirableMethod> method = autowirableMethod(new TestClass(), "ten");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Object response = method.get().invokeFromRequest(request, context);
+        assertEquals("null", response);
+    }
+
+    @Test
     public void complexTypeTestOne() throws Exception {
         Optional<AutowirableMethod> method = autowirableMethod(new ComplexTypeTest(), "one");
         assertNotNull(method);
@@ -256,6 +266,26 @@ public class AutowirableMethodTest {
         assertTrue(method.isPresent());
         Object response = method.get().invokeFromRequest(request, context);
         assertEquals("1-2-1-3-", response);
+    }
+
+    @Test
+    public void complexTypeTestTen() throws Exception {
+        when(request.queryParams(anyString())).thenReturn(null);
+        Optional<AutowirableMethod> method = autowirableMethod(new ComplexTypeTest(), "ten");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Object response = method.get().invokeFromRequest(request, context);
+        assertEquals("empty", response);
+    }
+
+    @Test
+    public void complexTypeTestEleven() throws Exception {
+        when(request.queryParams(anyString())).thenReturn(null);
+        Optional<AutowirableMethod> method = autowirableMethod(new ComplexTypeTest(), "eleven");
+        assertNotNull(method);
+        assertTrue(method.isPresent());
+        Object response = method.get().invokeFromRequest(request, context);
+        assertEquals("empty", response);
     }
 
     @Test(expected = UnauthorizedException.class)
@@ -359,6 +389,11 @@ public class AutowirableMethodTest {
                 @QueryParameter(value = "input", defaultValue = "default", mandatory = false) String input) {
             return input;
         }
+
+        @GET("/")
+        public String ten(@QueryParameter(value = "input", mandatory = false) Long input) {
+            return input == null ? "null" : "";
+        }
     }
 
     @SuppressWarnings("unused")
@@ -431,6 +466,34 @@ public class AutowirableMethodTest {
                 builder.append("-");
             }
             return builder.toString();
+        }
+
+        @GET("/")
+        public String ten(@QueryParameter(value = "input", mandatory = false) Set<Long> input) {
+            if (input == null) {
+                return "null";
+            }
+
+            if (input.isEmpty()) {
+                return "empty";
+            }
+
+            return input.stream().map(el -> Long.toString(el)).collect(Collectors.joining("-"));
+        }
+
+        @GET("/")
+        public String eleven(
+                @QueryParameter(value = "input", mandatory = false) Set<String> input) {
+
+            if (input == null) {
+                return "null";
+            }
+
+            if (input.isEmpty()) {
+                return "empty";
+            }
+
+            return String.join("-", input);
         }
     }
 }

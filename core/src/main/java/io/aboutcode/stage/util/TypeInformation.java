@@ -6,6 +6,7 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -53,9 +54,10 @@ public final class TypeInformation {
         return isSingleValue() && type.isPrimitive();
     }
 
-    public Object convert(List<String> input) {
+    public Object convert(final List<String> rawInput) {
+        List<String> input = rawInput;
         if (input == null) {
-            return null;
+            input = Collections.emptyList();
         }
 
         Class<?> converterType;
