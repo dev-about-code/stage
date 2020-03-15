@@ -1,5 +1,7 @@
 package io.aboutcode.stage.web.autowire;
 
+import static io.aboutcode.stage.web.autowire.QueryParameter.DEFAULT_VALUE;
+
 import io.aboutcode.stage.util.TypeInformation;
 import io.aboutcode.stage.web.autowire.auth.AuthorizationRealm;
 import io.aboutcode.stage.web.autowire.auth.Authorized;
@@ -442,20 +444,23 @@ final class AutowirableMethod {
         Object retrieveFrom(Request request, AutowiringRequestContext context)
                 throws IllegalAutowireValueException {
             List<String> input = request.queryParams(name);
-            if(input != null && input.isEmpty()) {
+            if (input != null && input.isEmpty()) {
                 input = null;
             }
 
             if (input == null && (mandatory || typeInformation.isPrimitive())) {
                 throw new IllegalAutowireValueException(
-                        String.format("Mandatory parameter '%s' was null", name));
+                        String.format("Mandatory parameter '%s' was not specified", name));
             }
+
+            String defaultValue =
+                    Objects.equals(this.defaultValue, DEFAULT_VALUE) ? null : this.defaultValue;
 
             try {
                 input = Optional.ofNullable(input)
                                 .orElseGet(() -> Optional.ofNullable(defaultValue)
                                                          .map(Collections::singletonList)
-                                                         .orElse(null)
+                                                         .orElse(Collections.emptyList())
                                 );
                 return typeInformation.convert(input);
             } catch (Exception e) {
