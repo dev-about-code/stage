@@ -13,6 +13,9 @@ import java.lang.annotation.Target;
 @Inherited
 @Target({ElementType.PARAMETER})
 public @interface QueryParameter {
+    // this is horrible - thanks a lot, Java
+    String DEFAULT_VALUE = "---DEFAULT---";
+
     /**
      * Returns the name of the query parameter to assign the value from
      *
@@ -27,7 +30,7 @@ public @interface QueryParameter {
      * @return The default value that this parameter should be assigned if it is not set. Must be
      * parsable into the target type
      */
-    String defaultValue() default "";
+    String defaultValue() default DEFAULT_VALUE;
 
     /**
      * If true (the default), the request will fail with an error if the specified query parameter

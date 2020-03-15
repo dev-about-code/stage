@@ -40,28 +40,28 @@ import java.util.Optional;
 public final class DefaultTypeConverters {
     private static final Dispatcher<Class, InputConverter<?>> CLASS_TO_CONVERTER =
             Dispatcher
-                    .<Class, InputConverter<?>>of(Integer.class, Integer::parseInt)
+                    .<Class, InputConverter<?>>of(Integer.class, nullable(Integer::parseInt))
                     .with(int.class, Integer::parseInt)
-                    .with(Long.class, Long::parseLong)
+                    .with(Long.class, nullable(Long::parseLong))
                     .with(long.class, Long::parseLong)
-                    .with(Double.class, Double::parseDouble)
+                    .with(Double.class, nullable(Double::parseDouble))
                     .with(double.class, Double::parseDouble)
-                    .with(Float.class, Float::parseFloat)
+                    .with(Float.class, nullable(Float::parseFloat))
                     .with(float.class, Float::parseFloat)
-                    .with(Byte.class, Byte::parseByte)
+                    .with(Byte.class, nullable(Byte::parseByte))
                     .with(byte.class, Byte::parseByte)
-                    .with(Character.class, input -> input.charAt(0))
+                    .with(Character.class, nullable(input -> input.charAt(0)))
                     .with(char.class, input -> input.charAt(0))
-                    .with(Short.class, Short::parseShort)
+                    .with(Short.class, nullable(Short::parseShort))
                     .with(short.class, Short::parseShort)
-                    .with(Boolean.class, Boolean::parseBoolean)
+                    .with(Boolean.class, nullable(Boolean::parseBoolean))
                     .with(boolean.class, Boolean::parseBoolean)
                     .with(String.class, input -> input)
                     .with(Object.class, input -> input)
-                    .with(ZonedDateTime.class, ZonedDateTime::parse)
-                    .with(LocalDateTime.class, LocalDateTime::parse)
-                    .with(LocalDate.class, LocalDate::parse)
-                    .with(LocalTime.class, LocalTime::parse);
+                    .with(ZonedDateTime.class, nullable(ZonedDateTime::parse))
+                    .with(LocalDateTime.class, nullable(LocalDateTime::parse))
+                    .with(LocalDate.class, nullable(LocalDate::parse))
+                    .with(LocalTime.class, nullable(LocalTime::parse));
 
     private DefaultTypeConverters() {
     }
@@ -81,5 +81,9 @@ public final class DefaultTypeConverters {
         }
 
         return Optional.empty();
+    }
+
+    private static <T> InputConverter<T> nullable(InputConverter<T> converter) {
+        return input -> input == null ? null : converter.convert(input);
     }
 }
