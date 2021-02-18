@@ -55,7 +55,7 @@ public class ApplicationContainer {
      */
     @SuppressWarnings("unused")
     public static void start(Application application, String[] arguments, Feature... features) {
-        start(application, arguments, null, (Feature[]) features);
+        start(application, arguments, null, features);
     }
 
     /**
@@ -89,7 +89,7 @@ public class ApplicationContainer {
     public static void startDaemon(Application application, String[] arguments,
                                    ApplicationStatusListener applicationStatusListener,
                                    Feature... features) {
-        start(application, arguments, applicationStatusListener, true);
+        start(application, arguments, applicationStatusListener, true, features);
     }
 
     /**
@@ -104,7 +104,7 @@ public class ApplicationContainer {
     @SuppressWarnings("unused")
     public static void startDaemon(Application application, String[] arguments,
                                    Feature... features) {
-        startDaemon(application, arguments, null, (Feature[]) null);
+        startDaemon(application, arguments, null, features);
     }
 
     private static void start(Application application, String[] arguments,

@@ -8,11 +8,12 @@ import java.io.InputStream;
  */
 public interface Part {
     /**
-     * Gets the content of this part as an <tt>InputStream</tt>
+     * Gets the content of this part as an <code>InputStream</code>
      *
-     * @return The content of this part as an <tt>InputStream</tt>
+     * @return The content of this part as an <code>InputStream</code>
      *
-     * @throws IOException If an error occurs in retrieving the contet as an <tt>InputStream</tt>
+     * @throws IOException If an error occurs in retrieving the contet as an
+     *                     <code>InputStream</code>
      */
     InputStream getInputStream() throws IOException;
 
@@ -26,7 +27,7 @@ public interface Part {
     /**
      * Gets the name of this part
      *
-     * @return The name of this part as a <tt>String</tt>
+     * @return The name of this part as a <code>String</code>
      */
     String getName();
 
