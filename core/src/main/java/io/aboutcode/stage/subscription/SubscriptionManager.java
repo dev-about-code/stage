@@ -4,10 +4,13 @@ import io.aboutcode.stage.concurrent.PooledTopicExecutor;
 import io.aboutcode.stage.concurrent.TopicExecutor;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -41,7 +44,7 @@ public final class SubscriptionManager<HandleT, ListenerT, HandbackT> {
             task.run();
         }
     };
-    private final Map<Object, List<ListenerWrapper>> topicSubscriptions = new HashMap<>();
+    private final Map<Object, Set<ListenerWrapper>> topicSubscriptions = new HashMap<>();
     private final Map<HandleT, ListenerWrapper> listeners = new HashMap<>();
     private final HandleFactory<HandleT> handleFactory;
     private final Object monitor = new Object();
@@ -61,6 +64,15 @@ public final class SubscriptionManager<HandleT, ListenerT, HandbackT> {
     public static HandleFactory<Long> IncrementingLongHandleFactory() {
         AtomicLong handleGenerator = new AtomicLong();
         return handleGenerator::incrementAndGet;
+    }
+
+    /**
+     * A standard handle factory that generates unique strings using {@link java.util.UUID}s.
+     *
+     * @return An implementation of {@link HandleFactory} that generates unique strings
+     */
+    public static HandleFactory<String> UUIDHandleFactory() {
+        return () -> UUID.randomUUID().toString();
     }
 
     /**
@@ -147,6 +159,29 @@ public final class SubscriptionManager<HandleT, ListenerT, HandbackT> {
     }
 
     /**
+     * Subscribes the specified listener to a <code>null</code> topic, also omitting the handback
+     *
+     * @param listener The listener to notify for an event
+     *
+     * @return The handle that can be used to unsubscribe the listener
+     */
+    public HandleT subscribe(ListenerT listener) {
+        return subscribe(null, null, listener);
+    }
+
+    /**
+     * Subscribes the specified listener to the specified topic without a handback
+     *
+     * @param topic    The topic to subscribe to
+     * @param listener The listener to notify for an event
+     *
+     * @return The handle that can be used to unsubscribe the listener
+     */
+    public HandleT subscribe(Object topic, ListenerT listener) {
+        return subscribe(topic, null, listener);
+    }
+
+    /**
      * Subscribes the specified listener to the specified topic. The specified handback will be
      * available to the listener for each event notification.
      *
@@ -160,19 +195,30 @@ public final class SubscriptionManager<HandleT, ListenerT, HandbackT> {
         HandleT handle = handleFactory.create();
         ListenerWrapper listenerWrapper = new ListenerWrapper(handle, listener, handback, topic);
         synchronized (monitor) {
-            List<ListenerWrapper> topicListeners;
+            Set<ListenerWrapper> topicListeners;
             if (listeners.containsKey(handle)) {
                 throw new IllegalArgumentException(String.format(
                         "Listener with handle '%s' already is subscribed - handle factory might not produce unique results",
                         handle));
             }
-            listeners.put(handle, listenerWrapper);
+
             if (!topicSubscriptions.containsKey(topic)) {
-                topicListeners = new LinkedList<>();
+                topicListeners = new HashSet<>();
                 topicSubscriptions.put(topic, topicListeners);
             } else {
                 topicListeners = topicSubscriptions.get(topic);
+                if (topicListeners.contains(listenerWrapper)) {
+                    @SuppressWarnings("OptionalGetWithoutIsPresent")
+                    ListenerWrapper existingListener = topicListeners
+                            .stream()
+                            .filter(current -> Objects.equals(current, listenerWrapper))
+                            .findFirst()
+                            .get();
+                    return existingListener.handle;
+                }
             }
+
+            listeners.put(handle, listenerWrapper);
             topicListeners.add(listenerWrapper);
         }
         return handle;
@@ -197,7 +243,7 @@ public final class SubscriptionManager<HandleT, ListenerT, HandbackT> {
         synchronized (monitor) {
             if (listeners.containsKey(handle)) {
                 ListenerWrapper listenerWrapper = listeners.remove(handle);
-                List<ListenerWrapper> topicSubscriptions = this.topicSubscriptions
+                Set<ListenerWrapper> topicSubscriptions = this.topicSubscriptions
                         .get(listenerWrapper.topic);
                 topicSubscriptions.remove(listenerWrapper);
             }
@@ -306,6 +352,24 @@ public final class SubscriptionManager<HandleT, ListenerT, HandbackT> {
             this.listener = listener;
             this.handback = handback;
             this.topic = topic;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            @SuppressWarnings("unchecked") final ListenerWrapper that = (ListenerWrapper) o;
+            return Objects.equals(listener, that.listener) &&
+                   Objects.equals(topic, that.topic);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(listener, topic);
         }
     }
 }
