@@ -8,10 +8,8 @@ import io.aboutcode.stage.web.request.RequestType;
 import io.aboutcode.stage.web.response.InternalServerError;
 import io.aboutcode.stage.web.response.Ok;
 import io.aboutcode.stage.web.util.HeaderAccess;
-import io.aboutcode.stage.web.websocket.DelegatingWebsocketHandler;
 import io.aboutcode.stage.web.websocket.WebsocketEndpoint;
-import io.aboutcode.stage.web.websocket.WebsocketIo;
-import io.aboutcode.stage.web.websocket.standard.TypedWebsocketMessage;
+import io.aboutcode.stage.web.websocket.io.WebsocketIo;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Comparator;
@@ -48,7 +46,7 @@ final class SparkServer {
     private final boolean isStaticFolderExternal;
     private final List<Route> routes;
     private final Set<WebsocketEndpoint> websocketEndpoints;
-    private final WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
+    private final WebsocketIo websocketIo;
     private final Dispatcher<RequestType, ServiceRequestProcessor> SERVICE_PROCESSORS =
             Dispatcher
                     .of(RequestType.AFTER_ALL, filter(HttpMethod.after))
@@ -69,6 +67,7 @@ final class SparkServer {
      * @param staticFilesFolder      The folder to serve static files from
      * @param isStaticFolderExternal If true, the folder is considered external and reloaded live
      * @param routes                 The routes this server should be processing
+     * @param websocketEndpoints     The endpoints for processing websocket communication
      * @param websocketIo            The io controller for the websocket connection
      */
     SparkServer(int port,
@@ -77,7 +76,7 @@ final class SparkServer {
                 boolean isStaticFolderExternal,
                 List<Route> routes,
                 Set<WebsocketEndpoint> websocketEndpoints,
-                WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
+                WebsocketIo websocketIo) {
         this.port = port;
         this.tslConfiguration = tslConfiguration;
         this.staticFilesFolder = staticFilesFolder;
@@ -221,23 +220,12 @@ final class SparkServer {
             }
         }
 
-        websocketEndpoints.forEach(websocketEndpoint -> {
-            // todo: also parse this per path to not get duplicates?
-            websocketEndpoint
-                    .getWebSocketRoutes()
-                    .forEach(route -> {
-                        DelegatingWebsocketHandler<? extends TypedWebsocketMessage> handler =
-                                new DelegatingWebsocketHandler<>(websocketIo);
-                        route.getWebSocketDataHandlers().forEach(element -> {
-                            LOGGER.debug("Adding route: {} -> {}",
-                                         route.getPath(),
-                                         element.getClass().getSimpleName());
-                            //noinspection unchecked
-                            handler.addandInitialize(element);
-                        });
-                        sparkService.webSocket(route.getPath(), handler);
-                    });
-        });
+        websocketEndpoints
+                .forEach(endpoint -> {
+                    LOGGER.debug("Adding websocket endpoint: {}", endpoint.getPath());
+                    endpoint.initialize();
+                    sparkService.webSocket(endpoint.getPath(), endpoint);
+                });
 
         //noinspection UnstableApiUsage
         List<Route> sortedRoutes = routes

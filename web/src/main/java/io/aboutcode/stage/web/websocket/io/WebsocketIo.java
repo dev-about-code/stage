@@ -1,13 +1,12 @@
-package io.aboutcode.stage.web.websocket;
+package io.aboutcode.stage.web.websocket.io;
 
 import java.io.IOException;
+import java.util.Optional;
 
 /**
  * Implementations of this provide functionality to serialize and deserialize websocket messages.
- *
- * @param <MessageT> The base type of message this can handle
  */
-public interface WebsocketIo<MessageT> {
+public interface WebsocketIo {
     /**
      * Serializes the specified element to a string representation that can be transferred via the
      * websocket.
@@ -18,7 +17,7 @@ public interface WebsocketIo<MessageT> {
      *
      * @throws IOException Thrown if the element could not be serialized
      */
-    String serialize(MessageT element) throws IOException;
+    Optional<String> serialize(Object element) throws IOException;
 
     /**
      * Deserializes the specified message into an object that can be processed by the application.
@@ -29,5 +28,5 @@ public interface WebsocketIo<MessageT> {
      *
      * @throws IOException Thrown if the message could not be deserialized
      */
-    MessageT deserialize(String message) throws IOException;
+    Optional<Object> deserialize(String message) throws IOException;
 }

@@ -1,12 +1,11 @@
-package io.aboutcode.stage.web.websocket.standard;
+package io.aboutcode.stage.web.websocket;
 
-import io.aboutcode.stage.web.websocket.WebsocketEndpoint;
 
 /**
  * This allows a {@link WebsocketDataHandler} to interact with the context of the enclosing {@link
- * WebsocketEndpoint}.
+ * WebsocketHandler}.
  */
-public interface WebsocketContext<MessageT extends TypedWebsocketMessage> {
+public interface WebsocketContext {
     /**
      * This allows the {@link WebsocketDataHandler} to publish messages to all clients subscribed to
      * the specified topic.
@@ -15,7 +14,7 @@ public interface WebsocketContext<MessageT extends TypedWebsocketMessage> {
      *                receive the message
      * @param message The message to send
      */
-    void publishToSubscribedClients(String topic, MessageT message);
+    void publishToSubscribedClients(String topic, Object message);
 
     /**
      * This allows the {@link WebsocketDataHandler} to publish messages to all clients connected to
@@ -23,5 +22,5 @@ public interface WebsocketContext<MessageT extends TypedWebsocketMessage> {
      *
      * @param message The message to send
      */
-    void publishToAllClients(MessageT message);
+    void publishToAllClients(Object message);
 }

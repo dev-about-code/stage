@@ -12,9 +12,8 @@ import io.aboutcode.stage.web.serialization.ContentTypeException;
 import io.aboutcode.stage.web.serialization.DefaultExceptionSerialization;
 import io.aboutcode.stage.web.serialization.JsonWebSerialization;
 import io.aboutcode.stage.web.serialization.WebSerialization;
-import io.aboutcode.stage.web.websocket.WebsocketIo;
-import io.aboutcode.stage.web.websocket.standard.TypedWebsocketMessage;
-import io.aboutcode.stage.web.websocket.standard.io.NotImplementedIo;
+import io.aboutcode.stage.web.websocket.io.WebsocketIo;
+import io.aboutcode.stage.web.websocket.io.noop.NoopWebsocketIo;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -31,7 +30,7 @@ public final class WebServerComponentBundleBuilder {
     private String internalStaticFolder;
     private Set<Class> validEndpoints;
     private WebSerialization serialization;
-    private WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
+    private WebsocketIo websocketIo;
     private Function<Exception, Response> exceptionSerialization;
 
     private WebServerComponentBundleBuilder(String rootPath,
@@ -41,7 +40,7 @@ public final class WebServerComponentBundleBuilder {
                                             String internalStaticFolder,
                                             Set<Class> validEndpoints,
                                             WebSerialization serialization,
-                                            WebsocketIo<? extends TypedWebsocketMessage> websocketIo,
+                                            WebsocketIo websocketIo,
                                             Function<Exception, Response> exceptionSerialization) {
         this.rootPath = rootPath;
         this.prefix = prefix;
@@ -67,7 +66,7 @@ public final class WebServerComponentBundleBuilder {
                                                    null,
                                                    null,
                                                    new JsonWebSerialization(),
-                                                   new NotImplementedIo<>(),
+                                                   new NoopWebsocketIo(),
                                                    new DefaultExceptionSerialization());
     }
 
@@ -290,7 +289,7 @@ public final class WebServerComponentBundleBuilder {
      * @return This for fluent interface
      */
     public WebServerComponentBundleBuilder withWebsocket(
-            WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
+            WebsocketIo websocketIo) {
         return new WebServerComponentBundleBuilder(
                 rootPath,
                 prefix,
@@ -314,7 +313,7 @@ public final class WebServerComponentBundleBuilder {
         private final String internalStaticFolder;
         private final Set<Class> validEndpoints;
         private AutowiringRequestContext autowiringRequestContext;
-        private WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
+        private WebsocketIo websocketIo;
 
         private TslConfiguration tslConfiguration;
         private WebServerConfiguration webServerConfiguration;
@@ -324,7 +323,7 @@ public final class WebServerComponentBundleBuilder {
                                       String internalStaticFolder,
                                       Set<Class> validEndpoints,
                                       AutowiringRequestContext autowiringRequestContext,
-                                      WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
+                                      WebsocketIo websocketIo) {
             this.rootPath = rootPath;
             this.prefix = prefix;
             this.identifier = identifier;
@@ -371,7 +370,7 @@ public final class WebServerComponentBundleBuilder {
         private final String internalStaticFolder;
         private final Set<Class> validEndpoints;
         private AutowiringRequestContext autowiringRequestContext;
-        private WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
+        private WebsocketIo websocketIo;
 
         private WebServerConfiguration webServerConfiguration;
 
@@ -380,7 +379,7 @@ public final class WebServerComponentBundleBuilder {
                                           String internalStaticFolder,
                                           Set<Class> validEndpoints,
                                           AutowiringRequestContext autowiringRequestContext,
-                                          WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
+                                          WebsocketIo websocketIo) {
             this.rootPath = rootPath;
             this.prefix = prefix;
             this.identifier = identifier;

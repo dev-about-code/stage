@@ -7,19 +7,22 @@ import io.aboutcode.stage.web.autowire.AutowiringRequestContext;
 import io.aboutcode.stage.web.autowire.WebRequestHandler;
 import io.aboutcode.stage.web.autowire.WebRequestHandlerParser;
 import io.aboutcode.stage.web.autowire.auth.AuthorizationRealm;
+import io.aboutcode.stage.web.websocket.AutowiredWebsocketHandler;
 import io.aboutcode.stage.web.websocket.WebsocketEndpoint;
-import io.aboutcode.stage.web.websocket.WebsocketIo;
-import io.aboutcode.stage.web.websocket.standard.TypedWebsocketMessage;
+import io.aboutcode.stage.web.websocket.WebsocketHandler;
+import io.aboutcode.stage.web.websocket.io.WebsocketIo;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * <p>This implements a standard web server component that registers both websocket- and
  * http-endpoints and services them.</p>
  * <p>The component expects implementations of {@link io.aboutcode.stage.web.autowire.WebRequestHandler}
- * and/or {@link WebsocketEndpoint} to be present in the component container. If no such components
- * are present, the server will still start up but will not serve any routes.</p>
+ * and/or {@link io.aboutcode.stage.web.websocket.WebsocketHandler} to be present in the component
+ * container. If no such components are present, the server will still start up but will not serve
+ * any routes.</p>
  */
 final class WebServerComponent extends BaseComponent {
     private final String rootPath;
@@ -28,7 +31,7 @@ final class WebServerComponent extends BaseComponent {
     private final boolean isStaticFolderExternal;
     private final Set<Class> validEndpoints;
     private final AutowiringRequestContext autowiringRequestContext;
-    private WebsocketIo<? extends TypedWebsocketMessage> websocketIo;
+    private WebsocketIo websocketIo;
     private TslConfiguration tslConfiguration;
 
     private SparkServer sparkServer;
@@ -53,7 +56,7 @@ final class WebServerComponent extends BaseComponent {
                        AutowiringRequestContext autowiringRequestContext,
                        TslConfiguration tslConfiguration,
                        Set<Class> validEndpoints,
-                       WebsocketIo<? extends TypedWebsocketMessage> websocketIo) {
+                       WebsocketIo websocketIo) {
         this.rootPath = rootPath;
         this.port = port;
         this.staticFilesFolder = staticFilesFolder;
@@ -87,20 +90,36 @@ final class WebServerComponent extends BaseComponent {
 
     private Set<WebsocketEndpoint> websocketEndpoints(DependencyContext context)
             throws DependencyException {
+        return websocketEndpoints(websocketHandlers(context));
+    }
+
+    private Set<WebsocketEndpoint> websocketEndpoints(Set<WebsocketHandler> handlers) {
+        return handlers.stream()
+                       .map(handler -> AutowiredWebsocketHandler.from(rootPath, handler))
+                       .collect(Collectors.groupingBy(AutowiredWebsocketHandler::getPath))
+                       .entrySet()
+                       .stream()
+                       .map(entry -> new WebsocketEndpoint(entry.getKey(), websocketIo,
+                                                           entry.getValue()))
+                       .collect(Collectors.toSet());
+    }
+
+    private Set<WebsocketHandler> websocketHandlers(DependencyContext context)
+            throws DependencyException {
         if (validEndpoints == null) {
-            return context.retrieveDependencies(WebsocketEndpoint.class);
+            return context.retrieveDependencies(WebsocketHandler.class);
         }
 
-        Set<WebsocketEndpoint> websocketEndpoints = new HashSet<>();
+        Set<WebsocketHandler> websocketHandlers = new HashSet<>();
         for (Class validType : validEndpoints) {
             //noinspection unchecked
             Set elements = context.retrieveDependencies(validType);
-            if (WebsocketEndpoint.class.isAssignableFrom(validType)) {
+            if (WebsocketHandler.class.isAssignableFrom(validType)) {
                 //noinspection unchecked
-                websocketEndpoints.addAll(elements);
+                websocketHandlers.addAll(elements);
             }
         }
-        return websocketEndpoints;
+        return websocketHandlers;
     }
 
     private List<Route> routes(DependencyContext context)

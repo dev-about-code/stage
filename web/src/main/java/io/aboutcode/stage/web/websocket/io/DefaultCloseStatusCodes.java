@@ -1,4 +1,4 @@
-package io.aboutcode.stage.web.websocket.standard;
+package io.aboutcode.stage.web.websocket.io;
 
 public enum DefaultCloseStatusCodes {
     NORMAL(1000),
