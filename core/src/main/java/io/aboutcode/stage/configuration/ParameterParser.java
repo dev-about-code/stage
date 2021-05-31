@@ -160,7 +160,7 @@ public final class ParameterParser {
         return field.getAnnotation(Parameter.class);
     }
 
-    private static InputConverter<Object> instantiateFrom(Class<InputConverter> type) {
+    private static InputConverter<Object> instantiateFrom(Class<? extends InputConverter> type) {
         try {
             //noinspection unchecked
             return (InputConverter<Object>) type.newInstance();
