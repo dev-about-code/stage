@@ -44,5 +44,5 @@ public @interface Parameter {
      *
      * @return The converter of the input value to the expected type of the parameter.
      */
-    Class<InputConverter> inputConverter() default InputConverter.class;
+    Class<? extends InputConverter> inputConverter() default InputConverter.class;
 }
