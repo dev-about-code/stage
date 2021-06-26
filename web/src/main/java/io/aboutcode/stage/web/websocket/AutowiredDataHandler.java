@@ -111,7 +111,7 @@ final class AutowiredDataHandler {
             throws Exception {
         if (canHandle(message)) {
             try {
-                return Optional.of(method.invoke(targetObject, assignParameters(message, session)));
+                return Optional.ofNullable(method.invoke(targetObject, assignParameters(message, session)));
             } catch (InvocationTargetException e) {
                 throw (Exception) e.getCause();
             }
